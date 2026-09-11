@@ -153,12 +153,12 @@ a:hover { color: var(--c-liujin-deep); }
   position: relative;
   display: flex;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-start;   /* 溢出安全：不用 center（flex 居中会两侧溢出且左项不可达） */
   padding: 0 var(--sp-6);
   border-bottom: 1px solid var(--line-hair);
   overflow: hidden;
 }
-.nav__group { display: flex; flex-direction: row; align-items: stretch; gap: var(--sp-1); justify-content: center; }
+.nav__group { display: flex; flex-direction: row; align-items: stretch; gap: var(--sp-1); margin: 0 auto; }   /* margin:auto 居中：溢出时自动退化为靠左可滚动 */
 .nav__label {
   display: flex; align-items: center;
   padding: 0 var(--sp-4) 0 0;

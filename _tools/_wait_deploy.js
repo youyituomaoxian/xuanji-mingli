@@ -1,4 +1,4 @@
-/* 轮询线上 components.css 指纹直到 v9.4（不透明顶栏）上线 */
+/* 轮询线上 components.css 直到 v10（移动端段落）上线 */
 const https = require('https');
 function fetchCss() {
   return new Promise(resolve => {
@@ -11,9 +11,8 @@ function fetchCss() {
 (async () => {
   for (let i = 0; i < 12; i++) {
     const t = await fetchCss();
-    const deployed = t.indexOf('#1e3540 0%, #16242e 100%') >= 0 && t.indexOf('mode-home .topbar') >= 0;
-    console.log('第' + (i + 1) + '次探测: v9.4=' + deployed);
-    if (deployed) { console.log('DEPLOYED'); process.exit(0); }
+    if (t.indexOf('v10 · 移动端适配') >= 0) { console.log('DEPLOYED 第' + (i + 1) + '次探测'); process.exit(0); }
+    console.log('第' + (i + 1) + '次探测: 未上线');
     await new Promise(r => setTimeout(r, 20000));
   }
   console.log('TIMEOUT');
