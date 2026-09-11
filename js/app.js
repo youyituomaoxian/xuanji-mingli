@@ -1373,6 +1373,15 @@
   function bindTopbar() {
     U.$('#btnGotoArchive').addEventListener('click', function () { go('archive'); });
     bindFloatCard();
+    /* 首页 Banner CTA（v9） */
+    var heroCta = U.$('#heroCta');
+    if (heroCta) heroCta.addEventListener('click', function () {
+      var card = U.$('#castCard');
+      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      U.$('#castName').focus();
+    });
+    var heroGhost = U.$('#heroGhost');
+    if (heroGhost) heroGhost.addEventListener('click', function () { go('fortune'); });
     U.$('#btnGlobalReset').addEventListener('click', function () {
       if (!global.confirm('确定重置？将清空四个分区的解析结果与问答记录（命盘档案保留）。')) return;
       SCHOOLS_LIST.forEach(function (s) {

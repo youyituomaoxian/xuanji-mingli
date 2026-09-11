@@ -85,6 +85,32 @@
 
       <!-- ======== 视图：命盘档案 ======== -->
       <section class="view is-active" data-view="archive">
+
+        <!-- ======== 首页 Banner：星台推演（暗色电影感 · 视频底 · 参考规格化排版） ======== -->
+        <div class="hero" id="heroBanner">
+          <div class="hero__plate">
+            <video class="hero__video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+              <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_112712_da9d53df-6d27-4b12-bdf6-aa9dc2622bdf.mp4" type="video/mp4">
+            </video>
+          </div>
+          <div class="hero__inner">
+            <p class="hero__kicker">XUANJI · 玄机命理</p>
+            <h2 class="hero__headline">
+              <span>玄之又玄，窥干支天机；</span>
+              <span>阴阳流转，观一世沉浮。</span>
+            </h2>
+            <p class="hero__sub">
+              <span>一次录入生辰，四大命理体系同步推演；</span>
+              <span>从命盘档案到每日气运，像观星一样看清自己的轨迹。</span>
+            </p>
+            <div class="hero__actions">
+              <button class="btn btn--primary" id="heroCta">开始 · 录入生辰</button>
+              <button class="btn btn--ghost" id="heroGhost">查看今日运势</button>
+            </div>
+          </div>
+          <div class="hero__scrollhint" aria-hidden="true">向下滚动 · 建立命盘<span class="hero__scrollline"></span></div>
+        </div>
+
         <div class="pagehead">
           <div class="pagehead__main">
             <div class="pagehead__kicker">BASE / 00</div>
@@ -108,7 +134,7 @@
 
         <div class="grid-2">
           <!-- 新建/编辑命盘 -->
-          <div class="card">
+          <div class="card" id="castCard">
             <div class="card__head">
               <h2 class="card__title">录入生辰</h2>
               <span class="tag tag--gold" id="editModeTag" style="display:none">编辑中</span>
@@ -217,6 +243,7 @@
           <div class="pagehead__main">
             <div class="pagehead__kicker">SCHOOL / 01</div>
             <h1 class="pagehead__title">倪海厦命理专区</h1>
+            <p class="pagehead__slogan">天纪观象，洞见天机；察阴阳盛衰，知进退时机。</p>
             <p class="pagehead__sub">
               天纪体系 · 天命—人事—地理三才框架。本分区仅调用 nihaixia 知识库，不与其他流派混判。
             </p>
@@ -268,6 +295,7 @@
           <div class="pagehead__main">
             <div class="pagehead__kicker">SCHOOL / 02</div>
             <h1 class="pagehead__title">四柱八字专区</h1>
+            <p class="pagehead__slogan">四柱定盘，五行论局；观喜忌流转，知一生格局。</p>
             <p class="pagehead__sub">
               子平体系 · 十神格局 · 大运流年。排盘引擎对齐 bazi-skill，并以 MingLi-Bench 命例交叉校验。
             </p>
@@ -328,6 +356,7 @@
           <div class="pagehead__main">
             <div class="pagehead__kicker">SCHOOL / 03</div>
             <h1 class="pagehead__title">紫微斗数专区</h1>
+            <p class="pagehead__slogan">星曜布列，宫位藏机；一盘中见岁月起落。</p>
             <p class="pagehead__sub">
               十二宫 · 十四主星 · 四化飞星。本分区以 MingLi-Bench 基准数据集作为排盘与推理参考。
             </p>
@@ -387,6 +416,7 @@
           <div class="pagehead__main">
             <div class="pagehead__kicker">GENERAL / 04</div>
             <h1 class="pagehead__title">通用运势专区</h1>
+            <p class="pagehead__slogan">观当日气运，察四时吉凶；知当下进退。</p>
             <p class="pagehead__sub">
               日 / 周 / 月 / 年 四维周期运势。整合三流派通用逻辑，不绑定单一体系。
             </p>

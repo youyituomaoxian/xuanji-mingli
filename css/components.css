@@ -810,3 +810,140 @@ body::before {
   border-radius: 3px;
   margin-bottom: var(--sp-2);
 }
+
+/* =========================================================================
+ * v9 · 首页 Hero Banner（暗色电影感 · 视频底）+ 各分区宣传语
+ * 参考规格：全出血视频底 / 底部渐隐 / 左列排版几何 / 入场 stagger / 150-250ms
+ * 适配裁决：文案换成本站 slogan（楷体大字）；底部渐隐收进深玄青（衔接下方浅色内容）；
+ *          视频加载失败自动回退为深色渐变底，不影响可读性。
+ * ====================================================================== */
+.hero {
+  position: relative;
+  height: calc(100vh - var(--h-top) - 44px);
+  min-height: 560px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(900px 500px at 70% 30%, rgba(42, 112, 184, 0.16), transparent 65%),
+    linear-gradient(160deg, #101b26 0%, #05070a 70%);
+  margin-bottom: var(--sp-6);
+}
+.hero__plate {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hero__video {
+  position: absolute;
+  left: 50%; top: 0;
+  width: calc(1492 * (100% / 1440)); height: 100%;
+  min-width: 100%;
+  transform: translateX(-50%);
+  object-fit: cover;
+}
+/* 底部渐隐（收进深玄青）+ 侧遮幅，均按参考规格的双渐变结构 */
+.hero__plate::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom,
+      rgba(5, 7, 10, 0) 62%, rgba(5, 7, 10, 0.30) 76%,
+      rgba(5, 7, 10, 0.66) 88%, rgba(22, 36, 46, 0.94) 97%, rgba(22, 36, 46, 1) 100%),
+    linear-gradient(to right,
+      rgba(5, 7, 10, 0.82) 0%, rgba(5, 7, 10, 0) 26%,
+      rgba(5, 7, 10, 0) 74%, rgba(5, 7, 10, 0.72) 100%);
+}
+.hero__inner {
+  position: absolute;
+  left: clamp(var(--sp-6), 5%, 75px);
+  right: clamp(var(--sp-6), 5%, 75px);
+  bottom: clamp(56px, 12%, 120px);
+  z-index: 2;
+}
+.hero__kicker {
+  font-family: var(--ff-mono);
+  font-size: var(--fs-12);
+  letter-spacing: var(--ls-wider);
+  color: rgba(201, 169, 97, 0.85);
+  margin-bottom: var(--sp-4);
+}
+.hero__headline {
+  font-family: var(--ff-serif);
+  font-weight: 400;
+  font-size: clamp(30px, calc(var(--fs-28) * 1.9), 58px);
+  line-height: 1.28;
+  color: #fafafa;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+  margin: 0 0 var(--sp-5);
+}
+.hero__headline span { display: block; }
+.hero__sub {
+  font-size: var(--fs-16);
+  line-height: 1.9;
+  color: rgba(233, 238, 244, 0.82);
+  margin: 0 0 var(--sp-6);
+}
+.hero__sub span { display: block; }
+.hero__actions { display: flex; gap: var(--sp-4); flex-wrap: wrap; }
+.hero__actions .btn--primary {
+  background: #ffffff;
+  color: #05070a;
+  border-color: transparent;
+  border-radius: var(--r-full);
+  font-weight: var(--fw-medium);
+}
+.hero__actions .btn--primary:hover { box-shadow: 0 0 26px rgba(255, 255, 255, 0.35); }
+.hero__actions .btn--ghost {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-radius: var(--r-full);
+}
+.hero__actions .btn--ghost:hover { color: var(--c-liujin); border-color: rgba(201, 169, 97, 0.6); }
+.hero__scrollhint {
+  position: absolute;
+  right: clamp(var(--sp-5), 4%, 60px);
+  bottom: var(--sp-5);
+  z-index: 2;
+  color: rgba(233, 238, 244, 0.55);
+  font-size: var(--fs-11);
+  letter-spacing: var(--ls-wide);
+  writing-mode: vertical-rl;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hero__scrollline {
+  width: 1px; height: 46px;
+  background: linear-gradient(180deg, rgba(233, 238, 244, 0.6), transparent);
+}
+/* 入场 stagger（仅加载一次；尊重减弱动效） */
+@keyframes heroRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes heroFade { from { opacity: 0; } to { opacity: 1; } }
+.hero__kicker   { animation: heroRise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero__headline { animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both; }
+.hero__sub      { animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.14s both; }
+.hero__actions  { animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.22s both; }
+.hero__scrollhint { animation: heroFade 1.1s ease 0.4s both; }
+/* 窄屏：文案收窄、视频聚焦人物 */
+@media (max-width: 760px) {
+  .hero { height: auto; min-height: 480px; }
+  .hero__inner { position: relative; left: 0; right: 0; bottom: 0; padding: 120px var(--sp-5) var(--sp-6); }
+  .hero__video { width: 100%; left: 0; transform: none; object-position: 43% center; }
+  .hero__headline { font-size: 26px; }
+  .hero__scrollhint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero__kicker, .hero__headline, .hero__sub, .hero__actions, .hero__scrollhint { animation: none !important; opacity: 1 !important; }
+}
+
+/* ---------- 各分区宣传语（楷体 · 黛青底鎏金衬） ---------- */
+.pagehead__slogan {
+  margin-top: var(--sp-2);
+  font-family: var(--ff-serif);
+  font-size: var(--fs-16);
+  color: var(--c-daiqing);
+  letter-spacing: 0.06em;
+}
+.pagehead__slogan::before { content: '〖 '; color: var(--c-liujin-deep); }
+.pagehead__slogan::after  { content: ' 〗'; color: var(--c-liujin-deep); }
