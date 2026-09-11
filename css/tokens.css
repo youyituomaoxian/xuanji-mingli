@@ -1,0 +1,113 @@
+/* =========================================================================
+ * tokens.css — 设计令牌层（唯一真源）
+ * 风格：新中式极简玄学风
+ *   配色：黛青 / 玄黑 / 月白 / 鎏金浅黄
+ *   质感：磨砂通透卡片、渐变柔光边框、细线条中式纹理底纹
+ *   字体：标题国风宋体、正文无衬线
+ *
+ * 规则：所有组件只允许引用 var(--token)，禁止裸 hex / 裸 px 字号
+ * ====================================================================== */
+:root {
+  /* ---------- 基础色（低饱和国风） ---------- */
+  --c-daiqing:        #2f4f5f;   /* 黛青 · 主色 */
+  --c-daiqing-deep:   #1e3540;   /* 黛青（深） */
+  --c-daiqing-soft:   #4a6b7c;   /* 黛青（浅） */
+  --c-xuanhei:        #14181c;   /* 玄黑 · 主文字 */
+  --c-xuanhei-mid:    #2b3238;   /* 玄黑（中） */
+  --c-yuebai:         #f5f3ee;   /* 月白 · 主底色 */
+  --c-yuebai-warm:    #ece8df;   /* 月白（暖） */
+  --c-liujin:         #c9a961;   /* 鎏金浅黄 · 强调色 */
+  --c-liujin-soft:    #e2cf9a;   /* 鎏金（浅） */
+  --c-liujin-deep:    #a8863c;   /* 鎏金（深） */
+
+  /* ---------- 功能色（克制，不抢国风） ---------- */
+  --c-ji:             #a8443a;   /* 吉/正向 · 朱砂 */
+  --c-xiong:          #5c6b73;   /* 凶/负向 · 青灰（不恐吓） */
+  --c-warn:           #b8863b;   /* 提示 */
+  --c-ok:             #4a7c59;   /* 成功 */
+
+  /* ---------- 表面 / 层级 ---------- */
+  --bg-app:           #f7f5f0;   /* 页面底 */
+  --bg-panel:         rgba(255, 255, 255, 0.66);      /* 磨砂卡片 */
+  --bg-panel-solid:   #fdfcfa;
+  --bg-inset:         rgba(47, 79, 95, 0.04);
+  --bg-hover:         rgba(47, 79, 95, 0.07);
+  --bg-active:        rgba(201, 169, 97, 0.13);
+
+  /* ---------- 描边 ---------- */
+  --line-hair:        rgba(47, 79, 95, 0.10);   /* 发丝线 */
+  --line-soft:        rgba(47, 79, 95, 0.16);
+  --line-strong:      rgba(47, 79, 95, 0.28);
+  --line-gold:        rgba(201, 169, 97, 0.42);
+
+  /* ---------- 文字 ---------- */
+  --tx-primary:       #14181c;
+  --tx-secondary:     #4d5a63;
+  --tx-tertiary:      #7d8a92;
+  --tx-inverse:       #f5f3ee;
+  --tx-gold:          #8a6d2a;
+
+  /* ---------- 字体 ---------- */
+  --ff-serif:  "Songti SC", "STSong", "SimSun", "Noto Serif SC", "Source Han Serif SC", serif;
+  --ff-sans:   "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", -apple-system, "Segoe UI", sans-serif;
+  --ff-mono:   "JetBrains Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
+
+  /* 字号（8 级） */
+  --fs-11: 11px;  --fs-12: 12px;  --fs-13: 13px;  --fs-14: 14px;
+  --fs-16: 16px;  --fs-18: 18px;  --fs-22: 22px;  --fs-28: 28px;
+
+  /* 行高 */
+  --lh-tight: 1.35;  --lh-base: 1.65;  --lh-loose: 1.85;
+
+  /* 字重 */
+  --fw-normal: 400;  --fw-medium: 500;  --fw-semibold: 600;
+
+  /* 字距 */
+  --ls-tight: -0.01em;
+  --ls-base:  0.01em;
+  --ls-wide:  0.08em;   /* 标题、标签 */
+  --ls-wider: 0.16em;   /* 分区序号等装饰性文本 */
+
+  /* ---------- 间距（4 基数） ---------- */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-8: 32px;  --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* ---------- 圆角 ---------- */
+  --r-xs: 3px;  --r-sm: 6px;  --r-md: 10px;  --r-lg: 14px;  --r-full: 999px;
+
+  /* ---------- 阴影（低饱和，无重投影） ---------- */
+  --sh-1: 0 1px 2px rgba(30, 53, 64, 0.04);
+  --sh-2: 0 2px 10px rgba(30, 53, 64, 0.06);
+  --sh-3: 0 6px 26px rgba(30, 53, 64, 0.08);
+  --sh-glow: 0 0 0 1px rgba(201, 169, 97, 0.20), 0 4px 20px rgba(201, 169, 97, 0.10);
+
+  /* ---------- 模糊 ---------- */
+  --blur-sm: 6px;
+  --blur-md: 14px;
+
+  /* ---------- 动效 ---------- */
+  --dur-fast: 120ms;  --dur-base: 220ms;  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.45, 0.05, 0.55, 0.95);
+
+  /* ---------- 布局骨架 ---------- */
+  --w-nav:  200px;      /* 左侧导航宽度 */
+  --h-top:  56px;       /* 顶部条高度 */
+  --w-main: 1180px;     /* 内容最大宽 */
+  --h-ctrl: 34px;       /* 控件标准高 */
+  --h-row:  40px;       /* 列表行高 */
+}
+
+/* ---------- 渐变柔光边框（磨砂卡片的统一实现） ---------- */
+:root {
+  --grad-hair: linear-gradient(
+    135deg,
+    rgba(201, 169, 97, 0.34) 0%,
+    rgba(47, 79, 95, 0.12) 38%,
+    rgba(47, 79, 95, 0.06) 62%,
+    rgba(201, 169, 97, 0.22) 100%
+  );
+  --grad-title: linear-gradient(92deg, #14181c 0%, #2f4f5f 62%, #a8863c 100%);
+  --grad-divider: linear-gradient(90deg, transparent, rgba(47, 79, 95, 0.18) 22%, rgba(201, 169, 97, 0.28) 50%, rgba(47, 79, 95, 0.18) 78%, transparent);
+}

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>个人玄学工作台 · 命理分区</title>
+<!-- 内联 SVG 图标，避免浏览器自动请求 /favicon.ico 产生 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f4f5f'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23c9a961' font-family='serif'%3E%E7%8E%84%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============ 品牌 ============ -->
+  <div class="brand">
+    <div class="brand__mark">玄</div>
+    <div class="brand__name">玄学工作台</div>
+  </div>
+
+  <!-- ============ 顶栏 ============ -->
+  <header class="topbar">
+    <div class="topbar__left">
+      <div class="castline" id="castline">
+        <span class="castline__empty">尚未录入生辰 — 请先在「命盘档案」中新建</span>
+      </div>
+    </div>
+    <div class="topbar__right">
+      <button class="btn btn--ghost btn--sm" id="btnGotoArchive">命盘</button>
+      <button class="btn btn--ghost btn--sm" id="btnGlobalReset">重置</button>
+    </div>
+  </header>
+
+  <!-- ============ 左侧导航 ============ -->
+  <nav class="nav">
+    <div class="nav__group">
+      <div class="nav__label">基础</div>
+      <button class="nav__item" data-view="archive" aria-current="page">
+        <span class="nav__idx">00</span><span class="nav__text">命盘档案</span>
+      </button>
+    </div>
+    <div class="nav__group">
+      <div class="nav__label">命理分区</div>
+      <button class="nav__item" data-view="nihaixia">
+        <span class="nav__idx">01</span><span class="nav__text">倪海厦命理</span>
+      </button>
+      <button class="nav__item" data-view="bazi">
+        <span class="nav__idx">02</span><span class="nav__text">四柱八字</span>
+      </button>
+      <button class="nav__item" data-view="ziwei">
+        <span class="nav__idx">03</span><span class="nav__text">紫微斗数</span>
+      </button>
+      <button class="nav__item" data-view="fortune">
+        <span class="nav__idx">04</span><span class="nav__text">通用运势</span>
+      </button>
+    </div>
+    <div class="nav__foot">
+      <div class="nav__foot-title">资源状态</div>
+      <div id="navResStatus">检测中…</div>
+    </div>
+  </nav>
+
+  <!-- ============ 主区 ============ -->
+  <main class="main">
+    <div class="main__inner" id="mainInner">
+
+      <!-- ======== 视图：命盘档案 ======== -->
+      <section class="view is-active" data-view="archive">
+        <div class="pagehead">
+          <div class="pagehead__main">
+            <div class="pagehead__kicker">BASE / 00</div>
+            <h1 class="pagehead__title">命盘档案</h1>
+            <p class="pagehead__sub">
+              一次录入生辰，四个命理分区自动同步。支持公历/农历切换、完整十二时辰、出生地真太阳时校正。
+            </p>
+          </div>
+          <div class="pagehead__side">
+            <span class="tag tag--idle" id="archCountTag">0 个命盘</span>
+          </div>
+        </div>
+
+        <div class="notice">
+          <span class="notice__icon">◈</span>
+          <div>
+            <strong>使用说明：</strong>先在下方新建一个命盘档案，填好生辰与出生地，之后所有分区都会自动使用该命盘。
+            本工作台为<strong>纯个人娱乐参考工具</strong>，所有解读不构成人生、投资、婚恋、医疗等任何决策依据。
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <!-- 新建/编辑命盘 -->
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">录入生辰</h2>
+              <span class="tag tag--gold" id="editModeTag" style="display:none">编辑中</span>
+            </div>
+
+            <div class="stack">
+              <div class="form-grid">
+                <div class="field col-6">
+                  <label class="field__label" for="castName">档案名称 <span class="field__label-req">*</span></label>
+                  <input class="input" id="castName" type="text" placeholder="如：本人 / 张三" maxlength="24" autocomplete="off">
+                </div>
+                <div class="field col-6">
+                  <label class="field__label">性别</label>
+                  <div class="seg" id="sexSeg" role="group">
+                    <button class="seg__btn" data-sex="male" aria-pressed="true">男</button>
+                    <button class="seg__btn" data-sex="female" aria-pressed="false">女</button>
+                  </div>
+                </div>
+
+                <div class="field col-6">
+                  <label class="field__label">历法</label>
+                  <div class="seg" id="calSeg" role="group">
+                    <button class="seg__btn" data-cal="solar" aria-pressed="true">公历</button>
+                    <button class="seg__btn" data-cal="lunar" aria-pressed="false">农历</button>
+                  </div>
+                </div>
+                <div class="field col-6">
+                  <label class="field__label">出生年月日 <span class="field__label-req">*</span></label>
+                  <div class="row">
+                    <input class="input input--mono" id="birthYear" type="number" min="1900" max="2100" placeholder="年" step="1">
+                    <input class="input input--mono" id="birthMonth" type="number" min="1" max="12" placeholder="月" step="1">
+                    <input class="input input--mono" id="birthDay" type="number" min="1" max="31" placeholder="日" step="1">
+                  </div>
+                </div>
+
+                <div class="field col-6" id="leapField" style="display:none">
+                  <label class="field__label">是否闰月</label>
+                  <div class="seg" id="leapSeg" role="group">
+                    <button class="seg__btn" data-leap="0" aria-pressed="true">非闰月</button>
+                    <button class="seg__btn" data-leap="1" aria-pressed="false">闰月</button>
+                  </div>
+                </div>
+
+                <div class="field col-6">
+                  <label class="field__label" for="birthShichen">出生时辰 <span class="field__label-req">*</span></label>
+                  <select class="select" id="birthShichen"></select>
+                </div>
+
+                <div class="field col-6">
+                  <label class="field__label" for="birthPlace">出生地区</label>
+                  <select class="select" id="birthPlace"></select>
+                  <span class="field__hint" id="placeHint">用于真太阳时校正</span>
+                </div>
+                <div class="field col-6">
+                  <label class="field__label">真太阳时校正</label>
+                  <label class="switch">
+                    <input type="checkbox" id="useTrueSolar" checked>
+                    <span class="switch__track"></span>
+                    <span class="switch__text" id="tstPreview">按出生地经度 + 均时差校正</span>
+                  </label>
+                </div>
+
+                <div class="field col-12" id="birthPreview" style="display:none">
+                  <div class="metric">
+                    <div class="metric__k">换算结果</div>
+                    <div class="metric__v" id="previewText">—</div>
+                    <div class="metric__sub" id="previewSub"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="field__error" id="formError" style="display:none"></div>
+
+              <div class="toolbar">
+                <button class="btn btn--primary" id="btnSaveCast">保存命盘</button>
+                <button class="btn btn--ghost" id="btnCancelEdit" style="display:none">取消编辑</button>
+                <div class="toolbar__spacer"></div>
+                <button class="btn btn--text" id="btnFillDemo">填入示例</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 档案列表 -->
+          <div class="card">
+            <div class="card__head">
+              <h2 class="card__title">我的命盘</h2>
+              <span class="card__hint">点击切换</span>
+            </div>
+            <div class="archive" id="archiveList"></div>
+          </div>
+        </div>
+
+        <!-- 排盘速览（选中命盘后显示） -->
+        <div class="card" id="quickPillarsCard" style="display:none">
+          <div class="card__head">
+            <h2 class="card__title">排盘速览</h2>
+            <span class="card__hint">四柱八字 · 基础盘面</span>
+          </div>
+          <div class="stack" id="quickPillars"></div>
+        </div>
+      </section>
+
+      <!-- ======== 视图：倪海厦命理 ======== -->
+      <section class="view" data-view="nihaixia">
+        <div class="pagehead">
+          <div class="pagehead__main">
+            <div class="pagehead__kicker">SCHOOL / 01</div>
+            <h1 class="pagehead__title">倪海厦命理专区</h1>
+            <p class="pagehead__sub">
+              天纪体系 · 天命—人事—地理三才框架。本分区仅调用 nihaixia 知识库，不与其他流派混判。
+            </p>
+          </div>
+          <div class="pagehead__side">
+            <span class="tag tag--idle" data-res-tag="nihaixia"><span class="tag__dot"></span>检测中</span>
+          </div>
+        </div>
+
+        <div class="card card--tight" data-res-notice="nihaixia" style="display:none"></div>
+
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tabs__btn" data-tab="nihaixia:result" aria-selected="true">命盘解析</button>
+            <button class="tabs__btn" data-tab="nihaixia:ask" aria-selected="false">专属提问</button>
+          </div>
+
+          <div class="tabpane is-active" data-pane="nihaixia:result">
+            <div class="toolbar" style="margin-bottom:var(--sp-5)">
+              <button class="btn btn--primary btn--sm" data-generate="nihaixia">生成解析</button>
+              <button class="btn btn--ghost btn--sm" data-refresh="nihaixia">刷新本区</button>
+              <button class="btn btn--ghost btn--sm" data-copy="nihaixia">复制全文</button>
+            </div>
+            <div id="out-nihaixia"></div>
+          </div>
+
+          <div class="tabpane" data-pane="nihaixia:ask">
+            <div class="ask">
+              <div class="ask__suggest">
+                <button class="btn btn--ghost" data-ask-preset="nihaixia|我的命格核心短板是什么？">命格短板</button>
+                <button class="btn btn--ghost" data-ask-preset="nihaixia|今年流年吉凶如何？">今年流年</button>
+                <button class="btn btn--ghost" data-ask-preset="nihaixia|事业上适合往哪个方向发展？">事业方向</button>
+                <button class="btn btn--ghost" data-ask-preset="nihaixia|健康方面有什么需要注意的？">健康注意</button>
+              </div>
+              <div class="ask__log" id="log-nihaixia"></div>
+              <div class="ask__form">
+                <textarea class="textarea" data-ask-input="nihaixia" placeholder="向倪海厦命理专区提问（仅响应本流派问题）…"></textarea>
+                <button class="btn btn--primary" data-ask-send="nihaixia">提问</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 视图：四柱八字 ======== -->
+      <section class="view" data-view="bazi">
+        <div class="pagehead">
+          <div class="pagehead__main">
+            <div class="pagehead__kicker">SCHOOL / 02</div>
+            <h1 class="pagehead__title">四柱八字专区</h1>
+            <p class="pagehead__sub">
+              子平体系 · 十神格局 · 大运流年。排盘引擎对齐 bazi-skill，并以 MingLi-Bench 命例交叉校验。
+            </p>
+          </div>
+          <div class="pagehead__side">
+            <span class="tag tag--idle" data-res-tag="bazi"><span class="tag__dot"></span>检测中</span>
+          </div>
+        </div>
+
+        <div class="card card--tight" data-res-notice="bazi" style="display:none"></div>
+
+        <!-- 排盘表 -->
+        <div class="card" id="baziPanCard" style="display:none">
+          <div class="card__head">
+            <h2 class="card__title">八字完整排盘</h2>
+            <span class="card__hint" id="baziPanHint"></span>
+          </div>
+          <div class="stack" id="baziPan"></div>
+        </div>
+
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tabs__btn" data-tab="bazi:result" aria-selected="true">全局解读</button>
+            <button class="tabs__btn" data-tab="bazi:ask" aria-selected="false">专属提问</button>
+          </div>
+
+          <div class="tabpane is-active" data-pane="bazi:result">
+            <div class="toolbar" style="margin-bottom:var(--sp-5)">
+              <button class="btn btn--primary btn--sm" data-generate="bazi">生成解读</button>
+              <button class="btn btn--ghost btn--sm" data-refresh="bazi">刷新本区</button>
+              <button class="btn btn--ghost btn--sm" data-copy="bazi">复制全文</button>
+            </div>
+            <div id="out-bazi"></div>
+          </div>
+
+          <div class="tabpane" data-pane="bazi:ask">
+            <div class="ask">
+              <div class="ask__suggest">
+                <button class="btn btn--ghost" data-ask-preset="bazi|我的喜用神是什么？日常怎么运用？">喜用神运用</button>
+                <button class="btn btn--ghost" data-ask-preset="bazi|当前大运走势如何？">当前大运</button>
+                <button class="btn btn--ghost" data-ask-preset="bazi|适合从事什么行业？">择业建议</button>
+                <button class="btn btn--ghost" data-ask-preset="bazi|感情婚姻方面的时机与注意？">婚姻时机</button>
+              </div>
+              <div class="ask__log" id="log-bazi"></div>
+              <div class="ask__form">
+                <textarea class="textarea" data-ask-input="bazi" placeholder="向四柱八字专区提问（仅响应八字专项问题）…"></textarea>
+                <button class="btn btn--primary" data-ask-send="bazi">提问</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 视图：紫微斗数 ======== -->
+      <section class="view" data-view="ziwei">
+        <div class="pagehead">
+          <div class="pagehead__main">
+            <div class="pagehead__kicker">SCHOOL / 03</div>
+            <h1 class="pagehead__title">紫微斗数专区</h1>
+            <p class="pagehead__sub">
+              十二宫 · 十四主星 · 四化飞星。本分区以 MingLi-Bench 基准数据集作为排盘与推理参考。
+            </p>
+          </div>
+          <div class="pagehead__side">
+            <span class="tag tag--idle" data-res-tag="ziwei"><span class="tag__dot"></span>检测中</span>
+          </div>
+        </div>
+
+        <div class="card card--tight" data-res-notice="ziwei" style="display:none"></div>
+
+        <div class="card" id="ziweiPanCard" style="display:none">
+          <div class="card__head">
+            <h2 class="card__title">紫微命盘</h2>
+            <span class="card__hint" id="ziweiPanHint"></span>
+          </div>
+          <div class="stack" id="ziweiPan"></div>
+        </div>
+
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tabs__btn" data-tab="ziwei:result" aria-selected="true">全局解读</button>
+            <button class="tabs__btn" data-tab="ziwei:ask" aria-selected="false">专属提问</button>
+          </div>
+
+          <div class="tabpane is-active" data-pane="ziwei:result">
+            <div class="toolbar" style="margin-bottom:var(--sp-5)">
+              <button class="btn btn--primary btn--sm" data-generate="ziwei">生成解读</button>
+              <button class="btn btn--ghost btn--sm" data-refresh="ziwei">刷新本区</button>
+              <button class="btn btn--ghost btn--sm" data-copy="ziwei">复制全文</button>
+            </div>
+            <div id="out-ziwei"></div>
+          </div>
+
+          <div class="tabpane" data-pane="ziwei:ask">
+            <div class="ask">
+              <div class="ask__suggest">
+                <button class="btn btn--ghost" data-ask-preset="ziwei|我的命宫主星代表什么性格？">命宫主星</button>
+                <button class="btn btn--ghost" data-ask-preset="ziwei|事业宫的星曜组合说明什么？">事业宫详解</button>
+                <button class="btn btn--ghost" data-ask-preset="ziwei|今年流年四化影响哪些方面？">流年四化</button>
+                <button class="btn btn--ghost" data-ask-preset="ziwei|我命盘里的煞星如何化解？">煞星化解</button>
+              </div>
+              <div class="ask__log" id="log-ziwei"></div>
+              <div class="ask__form">
+                <textarea class="textarea" data-ask-input="ziwei" placeholder="向紫微斗数专区提问（仅响应紫微专项问题）…"></textarea>
+                <button class="btn btn--primary" data-ask-send="ziwei">提问</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======== 视图：通用运势 ======== -->
+      <section class="view" data-view="fortune">
+        <div class="pagehead">
+          <div class="pagehead__main">
+            <div class="pagehead__kicker">GENERAL / 04</div>
+            <h1 class="pagehead__title">通用运势专区</h1>
+            <p class="pagehead__sub">
+              日 / 周 / 月 / 年 四维周期运势。整合三流派通用逻辑，不绑定单一体系。
+            </p>
+          </div>
+          <div class="pagehead__side">
+            <span class="tag tag--idle" data-res-tag="fortune"><span class="tag__dot"></span>检测中</span>
+          </div>
+        </div>
+
+        <div class="card card--tight" data-res-notice="fortune" style="display:none"></div>
+
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tabs__btn" data-tab="fortune:result" aria-selected="true">周期运势</button>
+            <button class="tabs__btn" data-tab="fortune:ask" aria-selected="false">日常提问</button>
+          </div>
+
+          <div class="tabpane is-active" data-pane="fortune:result">
+            <div class="toolbar" style="margin-bottom:var(--sp-5)">
+              <button class="btn btn--primary btn--sm" data-generate="fortune">生成运势</button>
+              <button class="btn btn--ghost btn--sm" data-refresh="fortune">刷新本区</button>
+              <button class="btn btn--ghost btn--sm" data-copy="fortune">复制全文</button>
+            </div>
+            <div id="out-fortune"></div>
+          </div>
+
+          <div class="tabpane" data-pane="fortune:ask">
+            <div class="ask">
+              <div class="ask__suggest">
+                <button class="btn btn--ghost" data-ask-preset="fortune|今天适合做什么、不适合做什么？">今日宜忌</button>
+                <button class="btn btn--ghost" data-ask-preset="fortune|最近几天有需要注意的日子吗？">近期提醒</button>
+                <button class="btn btn--ghost" data-ask-preset="fortune|这个月的开运方向是什么？">本月开运</button>
+                <button class="btn btn--ghost" data-ask-preset="fortune|面对一个短期抉择，有什么参考建议？">短期抉择</button>
+              </div>
+              <div class="ask__log" id="log-fortune"></div>
+              <div class="ask__form">
+                <textarea class="textarea" data-ask-input="fortune" placeholder="提问日常运势、择时宜忌、短期抉择…"></textarea>
+                <button class="btn btn--primary" data-ask-send="fortune">提问</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ============ 脚本 ============ -->
+<script src="js/ganzhi.js"></script>
+<script src="js/astro.js"></script>
+<script src="js/paipan.js"></script>
+<!-- 构建时内联的 Skill 知识快照（必须早于 resource.js：其 check() 会在加载时读取 KB_INLINE） -->
+<script src="js/kb-inline.js"></script>
+<script src="js/resource.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<!-- 紫微斗数推理规则层（亮度表/星性组合/格局/四化落宫）必须早于 schools.js -->
+<script src="js/ziwei-rules.js"></script>
+<!-- 倪海厦天纪推理规则层（三层总纲/起卦断事/地脉道/倪师话术）必须早于 schools.js -->
+<script src="js/nihaixia-rules.js"></script>
+<script src="js/schools.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

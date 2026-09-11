@@ -1,0 +1,11 @@
+global.window = global;
+require('I:/workbuddy/公司分析/玄学工作台/js/astro.js');
+const A = global.ASTRO;
+let jd = A.solarTermBeijing(1990, 315);
+console.log('1990立春(北京):', JSON.stringify(A.beijingFromJD(jd)));
+let birth = A.dateToJD_BJ(1990,2,3,10,0);
+console.log('1990-02-03 10:00 在立春前:', birth < jd);
+console.log('1990-05-15 农历:', JSON.stringify(A.solarToLunar(1990,5,15)));
+console.log('农历1990-4-21 →', JSON.stringify(A.lunarToSolar(1990,4,21,false)));
+console.log('校正分钟(1990-05-15 12:00,121.47E):', A.trueSolarTimeOffsetMinutes(1990,5,15,12,0,121.47).toFixed(2));
+console.log('校正分钟(1990-05-15 12:00,116.4E):', A.trueSolarTimeOffsetMinutes(1990,5,15,12,0,116.4).toFixed(2));
