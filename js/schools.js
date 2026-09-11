@@ -1339,14 +1339,60 @@
     zw.sihua.forEach(function (s) { if (s.type === '禄' || s.type === '权') coreKeywords.push(s.star + '化' + s.type); });
     coreKeywords = coreKeywords.slice(0, 5);
 
+    /* ---------- 小白友好层（书 E5 · 解读雷同修复 + 术语翻译） ---------- */
+    var zf = ZR();
+    var openHtml = '';
+    if (zf) {
+      /* 三句话看懂：白话、无术语、每盘不同（由命盘数据驱动） */
+      var ps = zf.plainSummary(zw, pan);
+      openHtml += '<div class="plainbox">' + ps.map(function (s, i) {
+        return '<p class="plainline"><span class="plainno">' + (i + 1) + '</span>' + U.esc(s) + '</p>';
+      }).join('') + '</div>';
+
+      /* 显著特征：数据驱动提取 3~6 条本盘独有特征（不同命盘 → 不同特征组合） */
+      var feats = zf.highlightFeatures(zw);
+      if (feats.length) {
+        openHtml += '<div class="featgrid">' + feats.map(function (f) {
+          return '<div class="featcard">' +
+            '<div class="featcard__t">' + U.esc(f.t) + '</div>' +
+            '<div class="featcard__ev">依据：' + U.esc(f.ev || '—') + '</div>' +
+            '<div class="featcard__d">' + U.esc(f.d) + '</div></div>';
+        }).join('') + '</div>';
+      }
+    }
+
+    /* 总览句式变体：按命局指纹确定性选取（同盘恒定、异盘换句式） */
+    var fp = zf ? zf.chartFingerprint(zw, pan) : 0;
+    var sumHead = [
+      '命宫在 ' + U.kw(GZ.ZHI[zw.mingIdx]) + '，' + U.kw(zw.bureau.name) + '，身宫在 ' + U.kw(GZ.ZHI[zw.shenIdx]) + '。',
+      '立命于' + U.kw(GZ.ZHI[zw.mingIdx]) + '位，以' + U.kw(zw.bureau.name) + '行限，身宫落在' + U.kw(GZ.ZHI[zw.shenIdx]) + '。',
+      '此盘' + U.kw(zw.bureau.name) + '起局，命宫安' + U.kw(GZ.ZHI[zw.mingIdx]) + '，身宫系于' + U.kw(GZ.ZHI[zw.shenIdx]) + '。'
+    ][fp % 3];
+    var sumBody = '命宫主星：' + U.kw(mingStars.length ? mingStars.join('、') : '无正曜') + '。' +
+      '生年四化：' + U.kw(zw.sihua.map(function (s) { return s.star + '化' + s.type; }).join('、')) + '。';
+
+    /* 术语速查：列出本盘解读中实际出现的术语（白话解释） */
+    var termsUsed = ['命宫', '三方四正', '庙旺利陷', '五行局', '身宫'];
+    var jiStar2 = zw.sihua.filter(function (s) { return s.type === '忌'; });
+    if (zw.sihua.length) termsUsed = termsUsed.concat(['化禄', '化权', '化科', '化忌']);
+    if (zw.curDec) termsUsed.push('大限');
+    var hasTough = zw.palaces.some(function (p) { return (p.aux || []).some(function (a) { return a.kind === 'tough'; }); });
+    if (hasTough) termsUsed.push('煞星', '辅星');
+    if (mingStars.indexOf('贪狼') >= 0 || mingStars.indexOf('廉贞') >= 0) termsUsed.push('桃花星');
+    if (!mingStars.length) termsUsed.push('对宫');
+    var gejuMatched = matchGeju(zw);
+    if (gejuMatched.length) termsUsed.push('格局');
+    var termRows = termsUsed.filter(function (k, i) { return termsUsed.indexOf(k) === i; })
+      .map(function (k) { return [U.kw(k), U.esc(zf ? zf.termOf(k) : '')]; });
+
     return {
       school: 'ziwei',
       title: '紫微斗数 · 全局解读',
       keywords: coreKeywords,
       html:
-        U.sum('命宫在 ' + U.kw(GZ.ZHI[zw.mingIdx]) + '，' + U.kw(zw.bureau.name) + '，身宫在 ' + U.kw(GZ.ZHI[zw.shenIdx]) +
-          '。命宫主星：' + U.kw(mingStars.length ? mingStars.join('、') : '无正曜') + '。' +
-          '生年四化：' + U.kw(zw.sihua.map(function (s) { return s.star + '化' + s.type; }).join('、')) + '。') +
+        U.sum(sumHead + sumBody) +
+
+        U.sec('开篇 · 先读这里', openHtml) +
 
         U.sec('一、紫微完整排盘',
           U.kvRows([
@@ -1361,8 +1407,26 @@
           '<div style="margin-top:var(--sp-5)">' +
           U.table(['宫位', '干支 · 大限', '主星（亮度）', '辅星', '主管'], palRows) + '</div>' +
           '<div class="rsec__body" style="margin-top:var(--sp-4);font-size:var(--fs-12);color:var(--tx-tertiary)">' +
-          '主星亮度分七级：庙 › 旺 › 得 › 利 › 平 › 不 › 陷。庙旺者星曜力量充分发挥，落陷者需多花心思经营。' +
-          '辅星中绿色为吉星、红色为煞星。</div>'
+          /* 亮度解读说明改为数据驱动：本盘主星庙陷分布统计（不同盘 → 不同文字） */
+          (function () {
+            var cnt = { strong: [], weak: [] };
+            zw.palaces.forEach(function (p) {
+              p.stars.forEach(function (s) {
+                var z2 = ZR();
+                if (!z2) return;
+                var b = z2.brightness(s, p.zhi);
+                var lv = b && z2.brLevel(b) ? z2.brLevel(b).lv : null;
+                if (lv === null) return;
+                if (lv >= 4) cnt.strong.push(s + '（' + p.name + '·' + b + '）');
+                else if (lv <= 0) cnt.weak.push(s + '（' + p.name + '·' + b + '）');
+              });
+            });
+            return '本盘十四主星：庙旺 ' + cnt.strong.length + ' 颗' +
+              (cnt.strong.length ? '（' + cnt.strong.join('、') + '）——这些是你的强项星' : '') +
+              '；落陷 ' + cnt.weak.length + ' 颗' +
+              (cnt.weak.length ? '（' + cnt.weak.join('、') + '）——这些星要多花心思打磨' : '') +
+              '。辅星中绿色为吉星、红色为煞星。';
+          })() + '</div>'
         ) +
 
         U.sec('二、命宫身宫 · 核心性格',
@@ -1376,10 +1440,7 @@
         U.sec('三、星性组合解读', ziweiComboBlock(zw, pan)) +
 
         U.sec('四、单宫详解 · 十二宫逐宫',
-          U.table(['宫位 / 主管', '干支 · 大限 · 长生', '主星（亮度）', '辅星 · 四化', '本宫解读与建议'], ziweiPalaceRows(zw)) +
-          '<div class="rsec__body" style="margin-top:var(--sp-4);font-size:var(--fs-12);color:var(--tx-tertiary)">' +
-          '读法：先看本宫主星与亮度定基调，再看辅星（吉/煞）修正强弱，最后看生年四化是否落此宫——' +
-          '有化禄/权/科则此领域被点亮，有化忌则此领域需要多经营。</div>'
+          U.table(['宫位 / 主管', '干支 · 大限 · 长生', '主星（亮度）', '辅星 · 四化', '本宫解读与建议'], ziweiPalaceRows(zw))
         ) +
 
         U.sec('五、三方四正 · 格局高低',
@@ -1388,7 +1449,35 @@
             '<strong>格局高低：</strong>' + gejuLevel
           ]) +
           '<div style="margin-top:var(--sp-4)">' + U.table(['宫位', '地支', '星曜'], sanfang.rows) + '</div>' +
-          classicJueBlock(GZ.ZHI[zw.mingIdx])
+          classicJueBlock(GZ.ZHI[zw.mingIdx]) +
+          (function () {
+            /* 十二宫强弱推演：纯数据推导（评分 = 主星亮度 ± 辅星吉煞），结论可回溯 */
+            if (!zf || !zf.palaceStrength) return '';
+            var rows = zf.palaceStrength(zw);
+            if (!rows.length) return '';
+            var top = rows[0], bottom = rows[rows.length - 1];
+            var maxAbs = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.score); }).concat([1]));
+            var bars = rows.map(function (r) {
+              var w = Math.round(Math.abs(r.score) / (maxAbs * 1.15) * 100);
+              var color = r.score >= 0 ? 'var(--c-daiqing)' : 'var(--c-ji)';
+              var val = (r.score > 0 ? '+' : '') + r.score;
+              return '<div class="wxbar">' +
+                '<div class="wxbar__name">' + U.esc(r.name + '宫') + '</div>' +
+                '<div class="wxbar__track"><div class="wxbar__fill" style="width:' + w + '%;background:' + color + '"></div></div>' +
+                '<div class="wxbar__val">' + val + '</div></div>' +
+                '<div style="font-size:var(--fs-11);color:var(--tx-tertiary);margin:-2px 0 var(--sp-2) ' +
+                'calc(6em + var(--sp-3))">依据：' + U.esc(r.ev) + '</div>';
+            }).join('');
+            return '<div style="margin-top:var(--sp-5)">' +
+              U.paras([
+                '<strong>十二宫强弱推演：</strong>评分＝主星亮度之和 ± 辅星吉煞加减——每一个分数都能回溯到盘面，换一张盘，排序与结论随之改变。',
+                '<strong>最强宫：' + top.name + '宫（' + top.score + ' 分）。</strong>' +
+                  (top.duty ? top.duty : '该宫') + '是你当前配置最厚的领域，发挥最稳，适合作为主赛道。',
+                '<strong>最弱宫：' + bottom.name + '宫（' + bottom.score + ' 分）。</strong>' +
+                  '这里宜借对宫之力、以专业补足，不必硬拼。'
+              ]) +
+              '<div class="strengthbars">' + bars + '</div></div>';
+          })()
         ) +
 
         U.sec('六、生年四化',
@@ -1467,7 +1556,11 @@
           { t: '风险规避', d: '化忌所在领域（' + (jiStar[0] ? jiStar[0].palace : '—') + '）避免过度投入与情绪化决策，慢一步往往更稳。' }
         ])) +
 
-        U.sec('十二、命格核心关键词', U.kwList(coreKeywords))
+        U.sec('十二、命格核心关键词', U.kwList(coreKeywords)) +
+
+        U.sec('附 · 名词速查（白话版）',
+          U.paras(['看命理最怕术语劝退——这里把本盘解读中出现的术语全部翻译成白话，读正文卡住时随时回来查。']) +
+          U.table(['术语', '白话解释'], termRows))
     };
   }
 
@@ -1560,6 +1653,90 @@
 
   /* ===================== 分区四：通用运势 ===================== */
 
+  /* 每日寄语池（fortune 分区与悬浮卡快照共用） */
+  var DAILY_JIYU = [
+    '今日宜把注意力放回自己身上——外界的噪音再多，也不如一个清晰的小目标有用。',
+    '慢一点没关系，方向对了，时间会替你加速。',
+    '把一件小事做完整，比同时开始五件事更有力量。',
+    '今天适合把纠结已久的问题写下来，写出来的瞬间，答案往往已经浮现。',
+    '运势是参考，选择才是主角。今天做的每一个小决定，都在悄悄改变轨迹。',
+    '给自己留一点空白，不填满，反而更容易接住意外的好机会。',
+    '与其等一个完美的时机，不如把手上的事做到今天的最好。'
+  ];
+
+  /* ---------- 悬浮卡当日快照（数据同源：全部由命盘 + 当日干支推导，无新增玄学逻辑） ----------
+     悬浮卡程序（PowerShell/WPF）只读本快照做展示，自身不做任何排盘与推理（任务书·算力边界）。 */
+  function dailySnapshot(pan) {
+    var now = new Date();
+    var today = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
+    var yong = pan.yongshen;
+    var todayGZ = dayGZOf(today.y, today.m, today.d);
+    var todayWu = GZ.GAN_WUXING[todayGZ.gan];
+    var todayXi = yong.xiyong.indexOf(todayWu) >= 0;
+    var todayJi = yong.jishen.indexOf(todayWu) >= 0;
+    var luckyWu = yong.xiyong[0];
+    var lucky = WX_LIFE[luckyWu] || { color: '—', dir: '—', habit: '' };
+    var jiyuIdx = (today.y * 372 + today.m * 31 + today.d) % DAILY_JIYU.length;
+    var weekday = ['日', '一', '二', '三', '四', '五', '六'][now.getDay()];
+
+    /* 评级：日干支五行 喜→吉 / 忌→慎 / 中性→平（数据推导，非随机） */
+    var tone = todayXi ? '吉' : (todayJi ? '慎' : '平');
+    var toneNote = todayXi ? '今日之气为命主喜用，做事顺势。'
+      : (todayJi ? '今日之气为命主忌神，宜守不宜攻。' : '今日之气中性，稳扎稳打即可。');
+
+    /* 三流派一句话摘要（各派数据驱动，无新增玄学逻辑） */
+    var schBazi = '今日' + todayGZ.gz + '（' + todayWu + '），对日主为' +
+      (todayXi ? '喜用之气，宜进' : (todayJi ? '忌神之气，宜守' : '中性之气，宜稳')) +
+      '；喜用' + yong.xiyong.join('、') + '。';
+    var zw = null;
+    try { zw = computeZiwei(pan); } catch (e) { zw = null; }
+    var schZiwei = '';
+    if (zw) {
+      var zhiIdx = GZ.ZHI.indexOf(todayGZ.zhi);
+      var palace = null;
+      zw.palaces.forEach(function (p) { if (p.idx === zhiIdx) palace = p; });
+      if (palace) {
+        var duty = (ZR() && ZR().PALACE_DETAIL[ZR().normPalace(palace.name)]) ? ZR().PALACE_DETAIL[ZR().normPalace(palace.name)].job : '';
+        schZiwei = '流日行至' + palace.name + '宫（' + palace.gan + palace.zhi + '），引动' + duty +
+          (palace.stars.length ? '；主星 ' + palace.stars.join('、') + '。' : '；宫内无主星，借对宫之力。');
+      }
+    }
+    var schNihai = '天机道今日：' + (todayXi ? '气顺宜进' : (todayJi ? '气滞宜守' : '气平宜稳')) +
+      '，' + (WX_LIFE[luckyWu] ? luckyWu + '气来扶，' : '') + '顺天时者逸。';
+
+    var rec = pan.input || {};
+    return {
+      v: 1,
+      generatedAt: now.toISOString(),
+      date: today.y + '-' + String(today.m).padStart(2, '0') + '-' + String(today.d).padStart(2, '0'),
+      weekday: '周' + weekday,
+      profile: {
+        name: rec.name || pan._profileName || '未命名',
+        sex: rec.sex === 'female' ? '女' : '男',
+        solar: (rec.solar ? rec.solar.y + '-' + rec.solar.m + '-' + rec.solar.d : ''),
+        shichen: rec.shichenName || '',
+        place: rec.place || ''
+      },
+      daily: {
+        gz: todayGZ.gz, wuxing: todayWu,
+        tone: tone, toneNote: toneNote,
+        four: [
+          { k: '事业', v: dayFieldText('事业', todayXi, todayWu) },
+          { k: '财运', v: dayFieldText('财运', todayXi, todayWu) },
+          { k: '感情', v: dayFieldText('感情', todayXi, todayWu) },
+          { k: '健康', v: dayFieldText('健康', todayXi, todayWu) }
+        ],
+        yi: todayXi ? '推进沟通、签约、拜访、整理收尾；决策可适度提速。' : '整理、复盘、学习、做减法；把基础工作做扎实。',
+        ji: todayXi ? '忌过度自信、忌一次铺太开；顺境留三分余地。' : '忌大额投入、忌情绪化表态；重要决定放到更顺的日子再定。',
+        warn: '留意' + (todayXi ? '因顺而松懈' : '因急而失据') + '——情绪稳住了，今天就不会出大问题。',
+        luckyColor: lucky.color.split('、')[0],
+        luckyDir: lucky.dir,
+        quote: DAILY_JIYU[jiyuIdx]
+      },
+      schools: { nihaixia: schNihai, bazi: schBazi, ziwei: schZiwei }
+    };
+  }
+
   function fortune(pan, res) {
     var now = new Date();
     var today = { y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() };
@@ -1568,6 +1745,7 @@
 
     /* 当日干支 */
     var todayGZ = dayGZOf(today.y, today.m, today.d);
+
     var todayWu = GZ.GAN_WUXING[todayGZ.gan];
     var todayXi = yong.xiyong.indexOf(todayWu) >= 0;
 
@@ -1611,17 +1789,7 @@
     }
     yearNodes.sort(function (a, b) { return (a.m * 100 + a.d) - (b.m * 100 + b.d); });
 
-    /* 寄语（按日干支轮转，正向） */
-    var JIYU = [
-      '今日宜把注意力放回自己身上——外界的噪音再多，也不如一个清晰的小目标有用。',
-      '慢一点没关系，方向对了，时间会替你加速。',
-      '把一件小事做完整，比同时开始五件事更有力量。',
-      '今天适合把纠结已久的问题写下来，写出来的瞬间，答案往往已经浮现。',
-      '运势是参考，选择才是主角。今天做的每一个小决定，都在悄悄改变轨迹。',
-      '给自己留一点空白，不填满，反而更容易接住意外的好机会。',
-      '与其等一个完美的时机，不如把手上的事做到今天的最好。'
-    ];
-    var jiyuIdx = (today.y * 372 + today.m * 31 + today.d) % JIYU.length;
+    var jiyuIdx = (today.y * 372 + today.m * 31 + today.d) % DAILY_JIYU.length;
 
     var coreKeywords = [];
     coreKeywords.push('今日' + todayGZ.gz);
@@ -1663,7 +1831,7 @@
         ) +
 
         U.sec('二、每日小寄语',
-          U.saying(JIYU[jiyuIdx], '通用运势 · 每日一言')
+          U.saying(DAILY_JIYU[jiyuIdx], '通用运势 · 每日一言')
         ) +
 
         U.sec('三、周运势 · 未来 7 天',
@@ -1874,6 +2042,7 @@
     bazi: bazi,
     ziwei: ziwei,
     fortune: fortune,
+    dailySnapshot: dailySnapshot,
     answer: answer,
     renderPillars: renderPillars,
     computeZiwei: computeZiwei,

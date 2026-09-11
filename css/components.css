@@ -658,3 +658,155 @@
   body { overflow: auto; background: #fff; }
   .card { box-shadow: none; background: #fff; }
 }
+
+/* =========================================================================
+ * v6 玄学风增强层（2026-09-11 · ui-pipeline: taste V3/D3/M2 + uupm Flat 原则）
+ * 设计裁决：
+ *   · 可读性第一：页面主体保持浅色暖纸白；神秘感由「深玄青氛围带」（导航/顶栏）
+ *     与细线玄学纹样承载，暗色绝不铺满全页、绝不进入正文卡片
+ *   · 平面四原则：亲密性（rsec 分组卡片化）、对比（金色小标签 vs 深色大正文）、
+ *     重复（统一表格/kv/tip 组件）、对齐（统一左对齐栅格）
+ *   · 动效：150-250ms 过渡，hover 微光，prefers-reduced-motion 守卫
+ * ====================================================================== */
+
+/* ---------- 氛围带：顶栏 + 导航条（深玄青，神秘感载体） ---------- */
+.topbar, .nav {
+  background: linear-gradient(135deg, #1e3540 0%, #16242e 100%);
+  border-color: rgba(201, 169, 97, 0.18);
+}
+.topbar { box-shadow: 0 1px 0 rgba(201, 169, 97, 0.14); }
+.brand { background: transparent; border-right: 1px solid rgba(201, 169, 97, 0.16); }
+.brand__mark {
+  background: rgba(201, 169, 97, 0.12);
+  color: var(--c-liujin);
+  box-shadow: 0 0 12px rgba(201, 169, 97, 0.18);
+}
+.brand__name { color: var(--c-yuebai); text-shadow: 0 0 10px rgba(201, 169, 97, 0.22); }
+.castline__empty, .castline__meta, .castline__name { color: #b8c8d2; }
+.castline__name { color: var(--c-yuebai); }
+.topbar .btn--ghost, .nav .btn--ghost { color: #b8c8d2; border-color: rgba(201, 169, 97, 0.25); }
+.topbar .btn--ghost:hover, .nav .btn--ghost:hover { color: var(--c-liujin-soft); border-color: rgba(201, 169, 97, 0.5); }
+
+/* 氛围带内的字色/功能色重定义（保证暗底对比度） */
+.topbar, .nav { --tx-tertiary: #9db2c0; --c-ok: #7fc49e; --c-ji: #e08a80; --c-warn: #e2c07f; }
+.nav__label { color: rgba(201, 169, 97, 0.75); }
+.nav__item { color: #b8c8d2; }
+.nav__item:hover { color: var(--c-liujin-soft); background: rgba(201, 169, 97, 0.08); }
+.nav__item[aria-current="page"] { color: var(--c-liujin); background: rgba(201, 169, 97, 0.10); }
+.nav__item[aria-current="page"]::before { background: linear-gradient(90deg, var(--c-liujin), var(--c-liujin-deep)); }
+.nav__idx { color: rgba(184, 200, 210, 0.6); }
+.nav__item[aria-current="page"] .nav__idx { color: var(--c-liujin); }
+.nav__gua { color: #8fb3c7; }
+.nav__item:hover .nav__gua { color: var(--c-liujin-soft); }
+.nav__item[aria-current="page"] .nav__gua { color: var(--c-liujin); }
+.nav__foot { color: #9db2c0; border-left-color: rgba(201, 169, 97, 0.16); }
+.nav__item.is-active { color: var(--c-liujin); }
+
+/* ---------- 页面底纹：暖纸白 + 极淡玄学纹样（角落卦纹 4~5%，不进内容区） ---------- */
+body::before {
+  background-image:
+    /* 角落八卦放射细线（仅左上/右下角，4.5%） */
+    repeating-conic-gradient(from 11.25deg at 0% 0%, rgba(47, 79, 95, 0.045) 0deg 1.2deg, transparent 1.2deg 45deg),
+    repeating-conic-gradient(from 11.25deg at 100% 100%, rgba(201, 169, 97, 0.05) 0deg 1.2deg, transparent 1.2deg 45deg),
+    /* 太极径向微光（两角，极淡） */
+    radial-gradient(420px 420px at 0% 0%, rgba(47, 79, 95, 0.05), transparent 70%),
+    radial-gradient(420px 420px at 100% 100%, rgba(201, 169, 97, 0.06), transparent 70%),
+    /* 回纹网格（保留回滚点意象） */
+    repeating-linear-gradient(0deg, transparent 0 23px, rgba(47, 79, 95, 0.022) 23px 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, rgba(47, 79, 95, 0.022) 23px 24px);
+  opacity: 0.75;
+}
+
+/* ---------- 卡片：顶部细鎏金线 + 角落卦纹垫底（文字层之下） ---------- */
+.card { border-top: 2px solid rgba(201, 169, 97, 0.35); }
+.card > * { position: relative; z-index: 1; }
+.card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 96px; height: 96px;
+  border-bottom-left-radius: var(--r-lg);
+  background:
+    repeating-conic-gradient(from 11.25deg at 100% 0%,
+      rgba(47, 79, 95, 0.05) 0deg 1.2deg, transparent 1.2deg 45deg),
+    radial-gradient(circle at 100% 0%, transparent 30%, rgba(201, 169, 97, 0.06) 30.4%, transparent 31.6%);
+  pointer-events: none;
+}
+
+/* ---------- 四原则 · 对比与亲密性：解读段落重组 ---------- */
+/* 段落 = 分组卡片：金色小标签（对比）+ 组内留白收紧、组间留白放大（亲密性） */
+.rsec {
+  background: rgba(253, 252, 250, 0.6);
+  border: 1px solid var(--line-hair);
+  border-left: 3px solid rgba(201, 169, 97, 0.45);
+  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-5);
+}
+.rsec__label {
+  font-size: var(--fs-12);
+  color: var(--c-liujin-deep);
+  letter-spacing: var(--ls-wide);
+  margin-bottom: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--line-hair);
+}
+.rsec__body { font-size: var(--fs-14); line-height: 1.85; }
+.rsec__body p { margin-bottom: var(--sp-3); }
+.rsec__body p:last-child { margin-bottom: 0; }
+
+/* 开篇白话框（三句话看懂）：与正式解读形成材质对比 */
+.plainbox {
+  background: linear-gradient(135deg, rgba(201, 169, 97, 0.10), rgba(201, 169, 97, 0.03));
+  border: 1px solid rgba(201, 169, 97, 0.30);
+  border-radius: var(--r-md);
+  padding: var(--sp-4) var(--sp-5);
+  margin-bottom: var(--sp-5);
+}
+.plainline { display: flex; gap: var(--sp-3); align-items: flex-start; margin: 0 0 var(--sp-3) !important; }
+.plainline:last-child { margin-bottom: 0 !important; }
+.plainno {
+  flex: none;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  border-radius: var(--r-full);
+  background: var(--c-daiqing);
+  color: var(--c-yuebai);
+  font-family: var(--ff-mono);
+  font-size: var(--fs-12);
+}
+.plainline { font-size: var(--fs-14); color: var(--tx-primary); line-height: 1.8; }
+
+/* 显著特征网格：重复（统一卡片）+ 对齐（等宽栅格） */
+.featgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--sp-3);
+}
+.featcard {
+  background: var(--bg-panel-solid);
+  border: 1px solid var(--line-hair);
+  border-left: 3px solid var(--c-daiqing);
+  border-radius: var(--r-sm);
+  padding: var(--sp-3) var(--sp-4);
+}
+.featcard__t { font-weight: var(--fw-semibold); color: var(--c-daiqing-deep); margin-bottom: var(--sp-2); font-size: var(--fs-13); }
+.featcard__d { color: var(--tx-secondary); font-size: var(--fs-13); line-height: 1.8; }
+
+/* ---------- 动效守卫 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}
+
+/* ---------- 十二宫强弱推演条（纯数据推导可视化） ---------- */
+.strengthbars { margin-top: var(--sp-4); }
+.strengthbars .wxbar { margin-bottom: var(--sp-2); }
+.featcard__ev {
+  font-size: var(--fs-11);
+  color: var(--tx-tertiary);
+  font-family: var(--ff-mono);
+  background: rgba(47, 79, 95, 0.045);
+  border-left: 2px solid rgba(201, 169, 97, 0.35);
+  padding: 3px 8px;
+  border-radius: 3px;
+  margin-bottom: var(--sp-2);
+}

@@ -465,6 +465,203 @@
   }
   var CLASSIC_SOURCE = '《紫微斗数全书》（明刻本系统，公版古籍）';
 
+  /* ======================= 11. 小白友好层（术语白话 + 特征提取 + 三句话摘要） =======================
+     目标用户是不懂玄学的小白：每个术语必须能给白话解释；
+     每张盘先给「三句话看懂」，再给「显著特征」条目 —— 特征由命盘数据驱动，
+     不同命盘提取出不同特征组合，从根上解决解读雷同。 */
+
+  /* 术语白话表：key 为解读中出现的术语，v 为一句白话 */
+  var TERMS = {
+    '命宫': '命宫＝你这个人的「出厂设定」——性格底色和一生主旋律，看它就知道你大致是什么样的人。',
+    '身宫': '身宫＝你后天越活越像的样子——30 岁后越走越重的行事重心。',
+    '三方四正': '三方四正＝以命宫为中心，把对宫和两个互成 120° 的宫拉进来一起看，相当于「主角 + 三个配角」合议。',
+    '庙旺利陷': '庙旺利陷＝星曜的「电量」：庙最足、陷最弱。同一颗星，电量不同表现完全两样。',
+    '化禄': '化禄＝老天发的机会券，落在哪个宫，哪个领域就容易顺、有甜头。',
+    '化权': '化权＝话语权和担子一起给，相关领域你有主导力，也得扛事。',
+    '化科': '化科＝名声与好评，容易被人认可、留下好口碑。',
+    '化忌': '化忌＝容易硌牙的地方——不是不能做，而是要格外用心经营，做好了反而成为你的专长。',
+    '五行局': '五行局＝你这盘的「节奏参数」，决定起步快慢和大限何时开始。',
+    '大限': '大限＝十年为一段的人生章节，每十年换一宫当值。',
+    '辅星': '辅星＝给主星打辅助的星：吉星帮你加分，煞星给你加难度。',
+    '煞星': '煞星＝给命盘加难度的星（擎羊、陀罗、火星、铃星、地空、地劫），落在哪宫就要在那件事上多练几手。',
+    '桃花星': '桃花星＝和异性缘、个人魅力相关的星，旺不旺看组合。',
+    '对宫': '对宫＝正对面的那个宫位，是本宫的「镜像补给」，力量会照过来。',
+    '格局': '格局＝几颗星按固定关系组合出的「命题作文」，决定人生剧本的大类型。'
+  };
+  function termOf(k) { return TERMS[k] || ''; }
+
+  /* 显著特征提取：从盘面数据驱动地挑出 3~6 条「这张盘独有」的特征。
+     每条 = { t: 标题, d: 白话解读 }；不同命盘 → 不同特征组合与文案。 */
+  /* 显著特征提取：从盘面数据驱动地挑出 3~6 条「这张盘独有」的特征。
+     平台铁律：每条特征 = { t 结论, d 白话解读, ev 推演依据 } ——
+     ev 是触发该结论的原始盘面事实，缺 ev 的结论不允许输出。
+     不同命盘 → 不同特征组合与不同推演链，从根上解决解读雷同。 */
+  function highlightFeatures(zw) {
+    var feats = [];
+    var z = (typeof global !== 'undefined' && global.ZIWEI_RULES) ? global.ZIWEI_RULES : null;
+    if (!zw || !zw.palaces) return feats;
+    var mingStars = zw.mingPalace.stars;
+    var mingPos = '命宫' + zw.mingPalace.gan + zw.mingPalace.zhi;
+
+    /* ① 命宫形态（单星/双星/无正曜） */
+    if (mingStars.length === 2) {
+      var pair = (z && z.pairOf) ? z.pairOf(mingStars[0], mingStars[1]) : null;
+      feats.push({ t: '双星坐命：' + mingStars.join('＋'), ev: mingPos + ' · ' + mingStars.join('、') + '同宫', d: pair ? pair.d : '两颗主星同宫，性格层次更丰富，路径选择更多元。' });
+    } else if (mingStars.length === 1) {
+      var attr = (z && z.STAR_ATTR[mingStars[0]]) || null;
+      feats.push({ t: '独星坐命：' + mingStars[0], ev: mingPos + ' · 仅 ' + mingStars[0] + ' 一颗主星', d: attr ? ('性格主线非常清晰——' + attr.good + '但要留意：' + attr.bad) : '性格主线清晰。' });
+    } else {
+      feats.push({ t: '命无正曜', ev: mingPos + ' · 十四主星 0 颗', d: '命宫没有主星坐镇，性格可塑性极强，像水一样随容器变形——早年方向感弱，正因为你什么都能试，找到主线后爆发力反而最大。' });
+    }
+
+    /* ② 全盘最亮星（庙旺级）——天生的王牌 */
+    var best = null;
+    zw.palaces.forEach(function (p) {
+      p.stars.forEach(function (s) {
+        var b = z ? z.brightness(s, p.zhi) : '';
+        var lv = b && z.brLevel(b) ? z.brLevel(b).lv : -9;
+        if (!best || lv > best.lv) best = { star: s, palace: p, b: b, lv: lv };
+      });
+    });
+    if (best && best.lv >= 4) {
+      feats.push({
+        t: '全盘最亮：' + best.star + '（' + best.b + '，落' + best.palace.name + '宫）',
+        ev: best.star + ' ' + best.b + ' · ' + best.palace.name + '宫' + best.palace.gan + best.palace.zhi + ' · 亮度 ' + best.lv + '/5',
+        d: best.star + '是你天生的王牌——它落在' + best.palace.name + '宫（主管' + ((z && z.PALACE_DETAIL[z.normPalace(best.palace.name)]) ? z.PALACE_DETAIL[z.normPalace(best.palace.name)].job : '') + '），这一宫就是你这辈子最顺手的发力点，把资源往这里投，回报率最高。'
+      });
+    }
+
+    /* ③ 化忌落宫 —— 此生的功课（白话版，区别于后文正式断语） */
+    var ji = zw.sihua.filter(function (s) { return s.type === '忌'; })[0];
+    if (ji) {
+      var jiPd = (z && z.PALACE_DETAIL[z.normPalace(ji.palace)]) || null;
+      feats.push({
+        t: '化忌落' + ji.palace + '宫：此生的功课',
+        ev: '生年' + ji.star + '化忌 · 落' + ji.palace + '宫（据年干 ' + zw.yearGan + ' 推）',
+        d: (jiPd ? jiPd.job + '是你最容易硌牙的地方——' : '') + '别人一学就会的事你可能要多练几遍。但化忌也是「专长制造机」：正因为费劲，熬过去的人往往比谁都专业。'
+      });
+    }
+
+    /* ④ 化禄落宫 —— 天生的顺风区 */
+    var lu = zw.sihua.filter(function (s) { return s.type === '禄'; })[0];
+    if (lu) {
+      var luPd = (z && z.PALACE_DETAIL[z.normPalace(lu.palace)]) || null;
+      feats.push({
+        t: '化禄落' + lu.palace + '宫：天生的顺风区',
+        ev: '生年' + lu.star + '化禄 · 落' + lu.palace + '宫（据年干 ' + zw.yearGan + ' 推）',
+        d: (luPd ? luPd.job + '自带机会加持——' : '') + '同样一份努力，在这个领域回报更高，别把顺风当理所当然，趁势把底盘做厚。'
+      });
+    }
+
+    /* ⑤ 煞星聚集宫（≥2 颗煞） */
+    var TOUGH = ['擎羊', '陀罗', '火星', '铃星', '地空', '地劫'];
+    zw.palaces.forEach(function (p) {
+      var tough = (p.aux || []).filter(function (a) { return TOUGH.indexOf(a.name) >= 0; });
+      if (tough.length >= 2 && p.stars.length) {
+        feats.push({
+          t: p.name + '宫煞星聚集（' + tough.length + ' 颗）',
+          ev: p.name + '宫（主管' + ((z && z.PALACE_DETAIL[z.normPalace(p.name)]) ? z.PALACE_DETAIL[z.normPalace(p.name)].job : '') + '） · ' + tough.map(function (a) { return a.name; }).join('、'),
+          d: '这块领域波动大，但它也是「压力测试场」，扛过去就是别人没有的阅历。'
+        });
+      }
+    });
+
+    /* ⑥ 禄马交驰（动中生财） */
+    var hasLu = false, hasMa = false;
+    zw.palaces.forEach(function (p) {
+      (p.aux || []).forEach(function (a) { if (a.name === '禄存') hasLu = true; if (a.name === '天马') hasMa = true; });
+    });
+    if (hasLu && hasMa) {
+      feats.push({ t: '禄存与天马同盘：禄马交驰', ev: '禄存、天马均在十二宫内（安星推得）', d: '财星和驿马同盘，属于「越动越有」的格局——出差、异地、跨区的机会要主动抓，守在原地反而浪费配置。' });
+    }
+
+    /* ⑦ 身宫与命宫同宫（一生主轴不换赛道） */
+    if (zw.shenIdx === zw.mingIdx) {
+      feats.push({ t: '身命同宫：一生主轴不换道', ev: '命宫 = 身宫 = ' + zw.mingPalace.zhi + '（重合）', d: '命宫与身宫重合，说明你的性格和后天走的路高度一致——认定的事会一直做下去，这种「不换道」本身就是稀缺优势。' });
+    }
+
+    /* ⑧ 全盘最弱主星（落陷）—— 慢热王牌，每盘落陷星不同 */
+    var worst = null;
+    zw.palaces.forEach(function (p) {
+      p.stars.forEach(function (s) {
+        var b = z ? z.brightness(s, p.zhi) : '';
+        var lv = b && z.brLevel(b) ? z.brLevel(b).lv : 9;
+        if (!worst || lv < worst.lv) worst = { star: s, palace: p, b: b, lv: lv };
+      });
+    });
+    if (worst && worst.lv <= 0) {
+      feats.push({
+        t: '全盘最弱：' + worst.star + '（' + worst.b + '，落' + worst.palace.name + '宫）',
+        ev: worst.star + ' ' + worst.b + ' · ' + worst.palace.name + '宫' + worst.palace.gan + worst.palace.zhi + ' · 亮度 ' + worst.lv + '/5',
+        d: worst.star + '是你此生最需要「刻意练习」的星——它落在' + worst.palace.name + '宫，年轻时这块总差口气；但落陷星的回报是后置的，中年后往往反超，属于典型的「慢热王牌」。'
+      });
+    }
+    return feats;
+  }
+
+  /* 三句话看懂：给小白的开篇白话（每句由盘面数据驱动，盘不同话不同） */
+  function plainSummary(zw, pan) {
+    var mingStars = zw.mingPalace.stars;
+    var s1;
+    if (mingStars.length) {
+      var t = (STAR_ATTR[mingStars[0]] || {}).t || '';
+      s1 = '你的主性格是「' + (mingStars.length > 1 ? mingStars.join('＋') : mingStars[0]) + '」型' + (t ? '（' + t + '）' : '') + '——命宫在' + GZ.ZHI[zw.mingIdx] + '，先天带着这套底色。';
+    } else {
+      s1 = '你的命宫没有主星坐镇，性格像水，适应力是你的天赋——但也意味着方向要靠自己早点定。';
+    }
+    var ji = zw.sihua.filter(function (s) { return s.type === '忌'; })[0];
+    var lu = zw.sihua.filter(function (s) { return s.type === '禄'; })[0];
+    var s2 = '这辈子最顺的领域是「' + (lu ? lu.palace : '—') + '」相关的事，最需要耐心经营的是「' + (ji ? ji.palace : '—') + '」相关的事。';
+    var s3 = zw.curDec
+      ? '你眼下正走' + zw.curDec.name + '宫大限（' + zw.curDec.dec.start + '–' + zw.curDec.dec.end + ' 岁），这十年的主题和' + zw.curDec.name + '有关。'
+      : '按五行局' + zw.bureau.name + '推，你的人生章节以十年为一幕，逐宫推进。';
+    return [s1, s2, s3];
+  }
+
+  /* 命局指纹：稳定哈希（同盘恒定、异盘不同），用于句式变体的确定性选取 */
+  function chartFingerprint(zw, pan) {
+    var s = zw.mingIdx + '|' + zw.shenIdx + '|' + zw.bureau.name + '|' + zw.mingPalace.stars.join(',') +
+      '|' + (pan && pan.pillars ? pan.pillars.year.gan + pan.pillars.year.zhi : '');
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 100000;
+    return h;
+  }
+
+  /* ======================= 12. 十二宫强弱推演（纯数据推导） =======================
+     平台原则：生成内容必须以数据知识为驱动、由命盘推导而出。
+     本函数是「可复现的推导」样板：每宫评分 = Σ主星亮度 + 辅星吉煞加减，
+     每一分都带证据（ev），强宫弱宫结论完全由评分排序产生——
+     换一张盘，评分、排序、结论全部随之改变。 */
+  function palaceStrength(zw) {
+    var rows = zw.palaces.map(function (p) {
+      var score = 0, ev = [];
+      if (p.stars.length) {
+        p.stars.forEach(function (s) {
+          var b = brightness(s, p.zhi);
+          var lv = b && brLevel(b) ? brLevel(b).lv : 1;
+          score += lv;
+          ev.push(s + (b ? '·' + b : '') + ' ' + (lv >= 0 ? '+' : '') + lv);
+        });
+      } else {
+        score -= 1;
+        ev.push('无主星 -1');
+      }
+      (p.aux || []).forEach(function (a) {
+        if (a.kind === 'soft') { score += 1.5; ev.push(a.name + ' +1.5'); }
+        else if (a.kind === 'tough') { score -= 1.5; ev.push(a.name + ' -1.5'); }
+        else if (a.kind === 'lucun') { score += 1; ev.push('禄存 +1'); }
+        else if (a.kind === 'tianma') { score += 0.5; ev.push('天马 +0.5'); }
+      });
+      return {
+        name: p.name, zhi: p.zhi, gan: p.gan,
+        score: Math.round(score * 10) / 10,
+        ev: ev.join('，'),
+        duty: (PALACE_DETAIL[normPalace(p.name)] ? PALACE_DETAIL[normPalace(p.name)].job : '')
+      };
+    }).sort(function (a, b) { return b.score - a.score; });
+    return rows;
+  }
+
   global.ZIWEI_RULES = {
     BR_BASE: BR_BASE,
     BRIGHTNESS: BRIGHTNESS,
@@ -501,6 +698,14 @@
     jueDe: jueDe,
     jueXian: jueXian,
     classicPalaceKey: classicPalaceKey,
-    CLASSIC_SOURCE: CLASSIC_SOURCE
+    CLASSIC_SOURCE: CLASSIC_SOURCE,
+
+    /* 小白友好层 */
+    TERMS: TERMS,
+    termOf: termOf,
+    highlightFeatures: highlightFeatures,
+    plainSummary: plainSummary,
+    chartFingerprint: chartFingerprint,
+    palaceStrength: palaceStrength
   };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -52,9 +52,9 @@
   --ff-sans:   "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans SC", -apple-system, "Segoe UI", sans-serif;
   --ff-mono:   "JetBrains Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
 
-  /* 字号（8 级） */
-  --fs-11: 11px;  --fs-12: 12px;  --fs-13: 13px;  --fs-14: 14px;
-  --fs-16: 16px;  --fs-18: 18px;  --fs-22: 22px;  --fs-28: 28px;
+  /* 字号（8 级 · 上调：整体可读性优先，适配长文命盘阅读） */
+  --fs-11: 12px;  --fs-12: 13px;  --fs-13: 14px;  --fs-14: 15px;
+  --fs-16: 17px;  --fs-18: 19px;  --fs-22: 24px;  --fs-28: 30px;
 
   /* 行高 */
   --lh-tight: 1.35;  --lh-base: 1.65;  --lh-loose: 1.85;

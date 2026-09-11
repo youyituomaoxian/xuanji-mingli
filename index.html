@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>个人玄学工作台 · 命理分区</title>
+<title>玄机命理 · 命理推演工作台</title>
 <!-- 内联 SVG 图标，避免浏览器自动请求 /favicon.ico 产生 404 -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232f4f5f'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='%23c9a961' font-family='serif'%3E%E7%8E%84%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/tokens.css">
@@ -11,56 +11,73 @@
 <link rel="stylesheet" href="css/components.css">
 </head>
 <body>
-
 <div class="app">
 
-  <!-- ============ 品牌 ============ -->
-  <div class="brand">
-    <div class="brand__mark">玄</div>
-    <div class="brand__name">玄学工作台</div>
+  <!-- ============ 顶栏（品牌 + 当前档案 + 操作）与页内导航条 ============ -->
+<header class="topbar">
+  <div class="topbar__left">
+    <div class="brand">
+      <div class="brand__mark">玄</div>
+      <div class="brand__name">玄机命理</div>
+    </div>
+    <div class="castline" id="castline">
+      <span class="castline__empty">尚未录入生辰 — 请先在「命盘档案」中新建</span>
+    </div>
   </div>
+  <div class="topbar__right">
+    <button class="btn btn--ghost btn--sm" id="btnFloatCard" title="下载桌面运势悬浮卡">
+      <svg width="13" height="13" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-2px;margin-right:4px">
+        <circle cx="20" cy="20" r="17"/><path d="M20 3 a17 17 0 0 1 0 34 a8.5 8.5 0 0 1 0 -17 a8.5 8.5 0 0 0 0 -17"/>
+      </svg>悬浮卡</button>
+    <button class="btn btn--ghost btn--sm" id="btnGotoArchive">命盘</button>
+    <button class="btn btn--ghost btn--sm" id="btnGlobalReset">重置</button>
+  </div>
+</header>
 
-  <!-- ============ 顶栏 ============ -->
-  <header class="topbar">
-    <div class="topbar__left">
-      <div class="castline" id="castline">
-        <span class="castline__empty">尚未录入生辰 — 请先在「命盘档案」中新建</span>
-      </div>
-    </div>
-    <div class="topbar__right">
-      <button class="btn btn--ghost btn--sm" id="btnGotoArchive">命盘</button>
-      <button class="btn btn--ghost btn--sm" id="btnGlobalReset">重置</button>
-    </div>
-  </header>
-
-  <!-- ============ 左侧导航 ============ -->
-  <nav class="nav">
-    <div class="nav__group">
-      <div class="nav__label">基础</div>
-      <button class="nav__item" data-view="archive" aria-current="page">
-        <span class="nav__idx">00</span><span class="nav__text">命盘档案</span>
-      </button>
-    </div>
-    <div class="nav__group">
-      <div class="nav__label">命理分区</div>
-      <button class="nav__item" data-view="nihaixia">
-        <span class="nav__idx">01</span><span class="nav__text">倪海厦命理</span>
-      </button>
-      <button class="nav__item" data-view="bazi">
-        <span class="nav__idx">02</span><span class="nav__text">四柱八字</span>
-      </button>
-      <button class="nav__item" data-view="ziwei">
-        <span class="nav__idx">03</span><span class="nav__text">紫微斗数</span>
-      </button>
-      <button class="nav__item" data-view="fortune">
-        <span class="nav__idx">04</span><span class="nav__text">通用运势</span>
-      </button>
-    </div>
-    <div class="nav__foot">
-      <div class="nav__foot-title">资源状态</div>
-      <div id="navResStatus">检测中…</div>
-    </div>
+<!-- ============ 页内导航条（原左侧作业树上移；右侧：资源状态） ============ -->
+<nav class="nav">
+  <div class="nav__group">
+    <span class="nav__label">导航</span>
+    <button class="nav__item" data-view="archive" aria-current="page">
+      <span class="nav__gua" aria-hidden="true">☷</span><span class="nav__idx">00</span><span class="nav__text">命盘档案</span>
+    </button>
+    <button class="nav__item" data-view="nihaixia">
+      <span class="nav__gua" aria-hidden="true">☳</span><span class="nav__idx">01</span><span class="nav__text">倪海厦命理</span>
+    </button>
+    <button class="nav__item" data-view="bazi">
+      <span class="nav__gua" aria-hidden="true">☶</span><span class="nav__idx">02</span><span class="nav__text">四柱八字</span>
+    </button>
+    <button class="nav__item" data-view="ziwei">
+      <span class="nav__gua" aria-hidden="true">☰</span><span class="nav__idx">03</span><span class="nav__text">紫微斗数</span>
+    </button>
+    <button class="nav__item" data-view="fortune">
+      <span class="nav__gua" aria-hidden="true">☵</span><span class="nav__idx">04</span><span class="nav__text">通用运势</span>
+    </button>
+  </div>
+  <div class="nav__foot" title="资源状态（悬停各行可看明细）">
+    <div id="navResStatus">检测中…</div>
+  </div>
   </nav>
+
+  <!-- ============ 悬浮卡下载面板（任务书·网页端下载入口） ============ -->
+  <div id="floatPanel" style="display:none;position:fixed;top:104px;right:20px;z-index:60;width:320px">
+    <div class="card" style="padding:var(--sp-4) var(--sp-5)">
+      <div style="font-weight:600;color:var(--c-daiqing-deep);margin-bottom:6px">桌面运势悬浮卡 · 下载</div>
+      <p style="font-size:var(--fs-12);color:var(--tx-secondary);line-height:1.7;margin-bottom:var(--sp-3)">
+        悬浮卡是 Windows 桌面常驻小窗（置顶、可拖动、可最小化），运势数据与网页版完全同源——
+        它自身不做推算，只展示网页导出的当日快照。</p>
+      <p style="font-size:var(--fs-12);color:var(--tx-tertiary);margin-bottom:var(--sp-3)">
+        下载后把三个文件放在<b>同一文件夹</b>，右键 .ps1 → 使用 PowerShell 运行。</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn--primary btn--sm" id="btnDlPs1" style="cursor:pointer">① 下载悬浮卡程序（.ps1）</button>
+        <button class="btn btn--ghost btn--sm" id="btnDlJson" style="cursor:pointer">② 下载今日运势快照（.json）</button>
+        <button class="btn btn--ghost btn--sm" id="btnDlTxt" style="cursor:pointer">③ 下载使用说明（.txt）</button>
+      </div>
+      <p style="font-size:var(--fs-11);color:var(--tx-tertiary);margin-top:var(--sp-3);line-height:1.6">
+        · 快照对应当前选中的命盘档案，切换档案后重新下载即可；<br>
+        · 悬浮卡内点「查看完整命盘」会自动带入档案打开本页。</p>
+    </div>
+  </div>
 
   <!-- ============ 主区 ============ -->
   <main class="main">
@@ -221,7 +238,8 @@
             <div class="toolbar" style="margin-bottom:var(--sp-5)">
               <button class="btn btn--primary btn--sm" data-generate="nihaixia">生成解析</button>
               <button class="btn btn--ghost btn--sm" data-refresh="nihaixia">刷新本区</button>
-              <button class="btn btn--ghost btn--sm" data-copy="nihaixia">复制全文</button>
+              <button class="btn btn--ghost btn--sm" data-export="md" data-school="nihaixia">导出 MD</button>
+              <button class="btn btn--ghost btn--sm" data-export="pdf" data-school="nihaixia">导出 PDF</button>
             </div>
             <div id="out-nihaixia"></div>
           </div>
@@ -280,7 +298,8 @@
             <div class="toolbar" style="margin-bottom:var(--sp-5)">
               <button class="btn btn--primary btn--sm" data-generate="bazi">生成解读</button>
               <button class="btn btn--ghost btn--sm" data-refresh="bazi">刷新本区</button>
-              <button class="btn btn--ghost btn--sm" data-copy="bazi">复制全文</button>
+              <button class="btn btn--ghost btn--sm" data-export="md" data-school="bazi">导出 MD</button>
+              <button class="btn btn--ghost btn--sm" data-export="pdf" data-school="bazi">导出 PDF</button>
             </div>
             <div id="out-bazi"></div>
           </div>
@@ -338,7 +357,8 @@
             <div class="toolbar" style="margin-bottom:var(--sp-5)">
               <button class="btn btn--primary btn--sm" data-generate="ziwei">生成解读</button>
               <button class="btn btn--ghost btn--sm" data-refresh="ziwei">刷新本区</button>
-              <button class="btn btn--ghost btn--sm" data-copy="ziwei">复制全文</button>
+              <button class="btn btn--ghost btn--sm" data-export="md" data-school="ziwei">导出 MD</button>
+              <button class="btn btn--ghost btn--sm" data-export="pdf" data-school="ziwei">导出 PDF</button>
             </div>
             <div id="out-ziwei"></div>
           </div>
@@ -388,7 +408,8 @@
             <div class="toolbar" style="margin-bottom:var(--sp-5)">
               <button class="btn btn--primary btn--sm" data-generate="fortune">生成运势</button>
               <button class="btn btn--ghost btn--sm" data-refresh="fortune">刷新本区</button>
-              <button class="btn btn--ghost btn--sm" data-copy="fortune">复制全文</button>
+              <button class="btn btn--ghost btn--sm" data-export="md" data-school="fortune">导出 MD</button>
+              <button class="btn btn--ghost btn--sm" data-export="pdf" data-school="fortune">导出 PDF</button>
             </div>
             <div id="out-fortune"></div>
           </div>

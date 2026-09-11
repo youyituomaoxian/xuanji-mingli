@@ -31,6 +31,8 @@
     bindTabs();
     bindSchoolActions();
     bindTopbar();
+    bindUrlImport();
+
     renderArchive();
     updateCastline();
     checkResources();
@@ -89,6 +91,7 @@
     U.$$('.nav__item').forEach(function (b) {
       if (b.getAttribute('data-view') === view) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
+      b.classList.toggle('is-active', b.getAttribute('data-view') === view);
     });
     U.$$('.view').forEach(function (v) {
       v.classList.toggle('is-active', v.getAttribute('data-view') === view);
@@ -529,25 +532,16 @@
       var s = snap[x[0]];
       var k = statusKind(s.status).tag;
       var color = k === 'ok' ? 'var(--c-ok)' : (k === 'fail' ? 'var(--c-ji)' : (k === 'warn' ? 'var(--c-warn)' : 'var(--tx-tertiary)'));
+      var statusCn = s.status === 'ok' ? '正常' : (s.status === 'fail' ? '失败' : (s.status === 'parse' ? '异常' : '检测'));
+      /* 悬浮卡横条空间有限：chip = 色点 + 名称 + 来源标记；状态语义由色点与悬停明细承载 */
       var mk = originMark(s.origin);
-      lines.push('<div title="' + U.esc(s.detail || '') + '" style="display:flex;align-items:center;gap:6px;padding:2px 0">' +
-        '<span style="width:5px;height:5px;border-radius:50%;background:' + color + ';flex:none"></span>' +
-        '<span style="flex:1">' + x[1] +
-          (mk ? ' <span style="font-size:9px;color:var(--tx-tertiary)">' + mk + '</span>' : '') + '</span>' +
-        '<span style="font-family:var(--ff-mono);font-size:10px;color:' + color + '">' +
-        U.esc(s.status === 'ok' ? '正常' : (s.status === 'fail' ? '失败' : (s.status === 'parse' ? '异常' : '检测'))) + '</span>' +
+      lines.push('<div title="' + U.esc((statusCn === '正常' ? '状态正常' : statusCn) + '：' + (s.detail || '')) + '"' +
+        ' style="display:flex;align-items:center;gap:5px;padding:2px 0">' +
+        '<span style="width:6px;height:6px;border-radius:50%;background:' + color + ';box-shadow:0 0 5px ' + color + ';flex:none"></span>' +
+        '<span>' + x[1] + '</span>' +
+        (mk ? '<span style="font-size:10px;color:var(--tx-tertiary)">' + mk + '</span>' : '') +
         '</div>');
     });
-    /* 数据来源脚注：证明资源不依赖 HTTP 服务器 */
-    var bt = RES.builtAt();
-    if (bt) {
-      var d = new Date(bt);
-      lines.push('<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(128,128,128,.28);' +
-        'font-size:9px;color:var(--tx-tertiary);line-height:1.5">' +
-        '内置快照 ' + d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
-        ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) +
-        '<br>三流派知识已内联，无需 HTTP 服务</div>');
-    }
     box.innerHTML = lines.join('');
   }
 
@@ -607,8 +601,12 @@
     U.$$('[data-refresh]').forEach(function (b) {
       b.addEventListener('click', function () { refreshSchool(b.getAttribute('data-refresh')); });
     });
-    U.$$('[data-copy]').forEach(function (b) {
-      b.addEventListener('click', function () { copySchool(b.getAttribute('data-copy')); });
+    U.$$('[data-export]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var school = b.getAttribute('data-school');
+        if (b.getAttribute('data-export') === 'pdf') exportPdf(school);
+        else exportMd(school);
+      });
     });
     U.$$('[data-ask-send]').forEach(function (b) {
       b.addEventListener('click', function () { ask(b.getAttribute('data-ask-send')); });
@@ -675,6 +673,17 @@
       '<div style="margin-top:var(--sp-6);padding-top:var(--sp-4);border-top:1px solid var(--line-hair);' +
       'font-size:var(--fs-11);color:var(--tx-tertiary);line-height:var(--lh-base)">' +
       '以上内容基于「' + (SCH.name[school] || '') + '」体系生成，仅供个人娱乐参考，不构成任何决策依据。</div>';
+
+    /* 天机缓缓显现：结果逐段浮现（克制淡入，尊重系统减弱动效偏好） */
+    var reduce = false;
+    try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { reduce = false; }
+    if (!reduce) {
+      var segs = out.querySelectorAll('.rsum, .rsec');
+      Array.prototype.forEach.call(segs, function (el, i) {
+        el.classList.add('rise');
+        el.style.animationDelay = Math.min(i * 90, 1400) + 'ms';
+      });
+    }
 
     STORE.setResult(school, { pan: pan, res: res, at: Date.now() });
     renderPanFor(school, rec);
@@ -750,22 +759,173 @@
     });
   }
 
-  /* 复制全文 */
-  function copySchool(school) {
-    var out = U.$('#out-' + school);
-    if (!out || !out.textContent.trim()) { U.toast('本分区还没有可复制的内容', 'fail'); return; }
+  /* ===================== 导出（MD / PDF，替代原「复制全文」） ===================== */
+  function exportHeader(school) {
     var rec = STORE.currentRecord();
-    var header = '【' + (SCH.name[school] || '') + '】' + (rec ? rec.name + ' · ' + rec.year + '-' + U.pad2(rec.month) + '-' + U.pad2(rec.day) + ' ' + rec.shichen + '时' : '') +
-      '\n生成时间：' + new Date().toLocaleString('zh-CN') + '\n' + '─'.repeat(40) + '\n\n';
-    var logs = STORE.getLogs(school);
-    var logText = '';
-    if (logs.length) {
-      logText = '\n\n' + '─'.repeat(40) + '\n【本分区问答记录】\n' +
-        logs.map(function (t, i) {
-          return (i + 1) + '. 问：' + t.q + '\n   答：' + t.aText;
-        }).join('\n\n');
+    var name = SCH.name[school] || '';
+    var who = rec ? rec.name + ' · ' + rec.year + '-' + U.pad2(rec.month) + '-' + U.pad2(rec.day) + ' ' + rec.shichen + '时' : '未命名命盘';
+    return { name: name, who: who, when: new Date().toLocaleString('zh-CN') };
+  }
+  function domainText() {
+    try {
+      if (location.protocol === 'file:') return '本机离线版（file:// 直接打开）';
+      return location.host || '本机离线版';
+    } catch (e) { return '本机离线版'; }
+  }
+  var DISCLAIMER = '免责声明：本工具生成内容基于传统命理体系的结构化推演，仅供个人娱乐与文化参考，不构成任何医疗、投资、法律或其他决策依据。';
+  function escHtml(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* DOM → Markdown：只处理本工具已知产出结构，未识别节点回退纯文本 */
+  function domToMd(root) {
+    var lines = [];
+    function inline(el) { return (el.textContent || '').replace(/\s+/g, ' ').trim(); }
+    function tableMd(tb) {
+      var rows = [].slice.call(tb.querySelectorAll('tr'));
+      if (!rows.length) return '';
+      function cells(tr) {
+        return [].slice.call(tr.children).map(function (td) { return inline(td).replace(/\|/g, '／') || ' '; });
+      }
+      var outp = ['| ' + cells(rows[0]).join(' | ') + ' |',
+        '|' + rows[0].children.length.toString() + ' |'];
+      outp[1] = '|' + cells(rows[0]).map(function () { return ' --- '; }).join('|') + '|';
+      rows.slice(1).forEach(function (tr) { outp.push('| ' + cells(tr).join(' | ') + ' |'); });
+      return outp.join('\n');
     }
-    U.copyText(header + U.htmlToText(out) + logText, '本分区内容已复制');
+    function walkBody(body) {
+      [].slice.call(body.children).forEach(function (c) {
+        if (c.tagName === 'P') { var t = inline(c); if (t) lines.push('', t); }
+        else if (c.tagName === 'TABLE' || c.classList.contains('table')) { lines.push('', tableMd(c), ''); }
+        else if (c.classList && c.classList.contains('kv')) {
+          [].slice.call(c.querySelectorAll('.kv__row')).forEach(function (r) {
+            var k = r.querySelector('.kv__k'), v = r.querySelector('.kv__v');
+            if (k && v) lines.push('- **' + inline(k) + '**：' + inline(v));
+          });
+        }
+        else if (c.classList && c.classList.contains('tips')) {
+          [].slice.call(c.querySelectorAll('.tip')).forEach(function (tp) {
+            var t1 = tp.querySelector('.tip__title'), d = tp.querySelector('.tip__desc');
+            lines.push('- **' + (t1 ? inline(t1) : '') + '**：' + (d ? inline(d) : ''));
+          });
+        }
+        else if (c.classList && c.classList.contains('saying')) { lines.push('> ' + inline(c)); }
+        else if (c.tagName === 'DIV') {
+          var directTable = c.querySelector(':scope > table, :scope > div > table');
+          if (directTable) { lines.push('', tableMd(directTable), ''); }
+          [].slice.call(c.children).filter(function (x) { return x.tagName === 'P'; })
+            .forEach(function (pp) { var t2 = inline(pp); if (t2) lines.push('', t2); });
+          [].slice.call(c.querySelectorAll('.tips')).forEach(function (tps) {
+            [].slice.call(tps.querySelectorAll('.tip')).forEach(function (tp) {
+              var t1 = tp.querySelector('.tip__title'), d = tp.querySelector('.tip__desc');
+              lines.push('- **' + (t1 ? inline(t1) : '') + '**：' + (d ? inline(d) : ''));
+            });
+          });
+        }
+      });
+    }
+    [].slice.call(root.children).forEach(function (el) {
+      if (el.classList.contains('rsum')) { lines.push('', '> **总览** ' + inline(el)); return; }
+      if (el.classList.contains('rsec')) {
+        var label = el.querySelector('.rsec__label');
+        var body = el.querySelector('.rsec__body');
+        lines.push('', '## ' + (label ? inline(label) : '段落'));
+        if (body) walkBody(body);
+        return;
+      }
+      var rest = inline(el);
+      if (rest) lines.push('', rest);
+    });
+    return lines.join('\n');
+  }
+
+  function exportMd(school) {
+    var out = U.$('#out-' + school);
+    if (!out || !out.textContent.trim()) { U.toast('本分区还没有可导出的内容', 'fail'); return; }
+    var h = exportHeader(school);
+    var md = '# ' + h.name + ' · ' + h.who + '\n\n' +
+      '- 生成时间：' + h.when + '\n' +
+      '- 来源：' + domainText() + '\n\n' +
+      '> ' + DISCLAIMER + '\n' +
+      domToMd(out.querySelector('.result') || out);
+    var logs = STORE.getLogs(school);
+    if (logs.length) {
+      md += '\n\n## 本分区问答记录\n\n' + logs.map(function (t, i) {
+        return (i + 1) + '. **问：**' + t.q + '\n\n   **答：**' + t.aText;
+      }).join('\n\n');
+    }
+    md += '\n\n---\n\n' + DISCLAIMER + '\n';
+    U.download('玄机命理-' + h.name + '.md', md);
+    U.toast('已导出 Markdown 文件', 'ok');
+  }
+
+  /* PDF：排版化打印视图（浏览器「另存为 PDF」），含来源域名与免责声明 */
+  var PRINT_CSS = [
+    ':root{--sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;',
+    '--fs-11:11px;--fs-12:12px;--fs-13:13px;--fs-14:14px;--fs-16:16px;--fs-18:18px;',
+    '--tx-primary:#1c2530;--tx-secondary:#42505e;--tx-tertiary:#6d7a86;',
+    '--c-ok:#3a7d5c;--c-ji:#a8443a;--c-warn:#a8823b;--c-liujin:#8a6d2a;--c-youxuan-bright:#2A70B8;',
+    '--ff-mono:Consolas,monospace;--ff-serif:"Kaiti SC","STKaiti","KaiTi",serif;',
+    '--lh-base:1.7;--line-hair:rgba(42,112,184,.14);--r-md:8px;}',
+    '*{box-sizing:border-box}',
+    'body{margin:0;padding:28px 34px;font:14px/1.7 "PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;color:#1c2530;background:#fff;}',
+    '@page{margin:18mm 16mm;}',
+    '.dochead{border-bottom:2px solid #2A70B8;padding-bottom:12px;margin-bottom:20px;}',
+    '.dochead .dom{font-size:11px;color:#6d7a86;letter-spacing:.08em;margin-bottom:4px;}',
+    '.dochead h1{margin:0 0 6px;font-family:var(--ff-serif);font-weight:600;font-size:24px;color:#14202b;}',
+    '.dochead .meta{font-size:12px;color:#6d7a86;}',
+    '.rsec{margin:0 0 18px;padding:0 0 6px 14px;border-left:2px solid rgba(42,112,184,.25);page-break-inside:avoid;}',
+    '.rsec__label{font-family:var(--ff-serif);font-weight:600;font-size:15px;color:#2A70B8;margin-bottom:8px;letter-spacing:.06em;}',
+    '.rsec__body{font-size:13px;}',
+    '.rsec__body p{margin:0 0 8px;}',
+    '.rsum{background:#f2f6fa;border:1px solid rgba(42,112,184,.2);border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:13px;}',
+    'table{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:12px;page-break-inside:avoid;}',
+    'th{background:#eef3f8;text-align:left;padding:6px 8px;border:1px solid #d8e2ec;font-weight:600;}',
+    'td{padding:6px 8px;border:1px solid #e3eaf1;vertical-align:top;}',
+    '.kw{color:#2A70B8;font-weight:600;}',
+    '.kw--good,.kw--ji{color:#8a6d2a;font-weight:600;}',
+    '.kw--xiong{color:#a8443a;font-weight:600;}',
+    '.tag{display:inline-block;border:1px solid #d8e2ec;border-radius:999px;padding:0 8px;font-size:11px;color:#42505e;}',
+    '.tag--ok{color:#3a7d5c;border-color:#9ec9b4;}.tag--warn{color:#a8823b;border-color:#dcc794;}',
+    '.tag--fail{color:#a8443a;border-color:#d8a49e;}.tag--gold{color:#8a6d2a;border-color:#d8c9a0;}',
+    '.num{font-family:var(--ff-mono);}',
+    '.saying{border-left:2px solid #c9b070;padding:2px 0 2px 10px;margin:8px 0;color:#42505e;}',
+    '.saying__src{font-size:11px;color:#6d7a86;}',
+    '.tip{border:1px solid #e3eaf1;border-radius:6px;padding:8px 12px;margin-bottom:8px;page-break-inside:avoid;}',
+    '.tip__title{font-weight:600;color:#2A70B8;}',
+    '.qa{margin-bottom:10px;page-break-inside:avoid;}',
+    '.qa .q{font-weight:600;margin:0 0 2px;}',
+    '.qa .a{margin:0;color:#42505e;}',
+    'h2{font-size:17px;color:#14202b;border-bottom:1px solid #d8e2ec;padding-bottom:6px;}',
+    '.docfoot{margin-top:26px;padding-top:10px;border-top:1px solid #d8e2ec;font-size:11px;color:#6d7a86;line-height:1.7;}'
+  ].join('');
+
+  function exportPdf(school) {
+    var out = U.$('#out-' + school);
+    if (!out || !out.textContent.trim()) { U.toast('本分区还没有可导出的内容', 'fail'); return; }
+    var h = exportHeader(school);
+    var contentHtml = (out.querySelector('.result') || out).innerHTML;
+    var logs = STORE.getLogs(school);
+    var logsHtml = logs.length
+      ? '<h2 style="margin-top:22px;">本分区问答记录</h2>' +
+        logs.map(function (t, i) {
+          return '<div class="qa"><p class="q">' + (i + 1) + '. 问：' + escHtml(t.q) + '</p><p class="a">答：' + escHtml(t.aText) + '</p></div>';
+        }).join('')
+      : '';
+    var w = window.open('', '_blank', 'width=920,height=1000');
+    if (!w) { U.toast('浏览器拦截了导出窗口，请允许本站弹窗后重试', 'fail'); return; }
+    w.document.write('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">' +
+      '<title>' + escHtml(h.name + ' · ' + h.who) + '</title><style>' + PRINT_CSS + '</style></head><body>' +
+      '<header class="dochead">' +
+        '<div class="dom">来源：' + escHtml(domainText()) + '</div>' +
+        '<h1>' + escHtml(h.name) + '</h1>' +
+        '<div class="meta">' + escHtml(h.who) + ' · 生成时间 ' + escHtml(h.when) + '</div>' +
+      '</header>' +
+      contentHtml + logsHtml +
+      '<footer class="docfoot">' + escHtml(DISCLAIMER) + '<br>来源：' + escHtml(domainText()) + ' · 生成时间 ' + escHtml(h.when) + '</footer>' +
+      '<' + 'script>setTimeout(function(){window.print();},450);<' + '/script>' +
+      '</body></html>');
+    w.document.close();
   }
 
   /* ===================== 提问 ===================== */
@@ -819,8 +979,325 @@
   }
 
   /* ===================== 顶栏操作 ===================== */
+  /* ===================== 桌面悬浮卡（任务书·追加模块） =====================
+     架构（第一性原理裁决）：
+       · 悬浮卡 = PowerShell + WPF（Windows 自带 .NET，零依赖、几 KB）——
+         Topmost / 无边框 / 拖动 / 半透明全部原生支持，Electron 体量不合法
+       · 数据同源：悬浮卡不内置任何排盘/推理，只读网页导出的当日快照
+         xuanji-data.json（由 SCHOOLS.dailySnapshot 数据驱动生成）
+       · 每日更新：60s 定时器检测快照文件修改时间与日期翻转，过期显示提示条
+       · 档案互通：悬浮卡跳转网页走 URL 参数（auto=1&…），网页自动建档带入 */
+
+  function buildSnapshotJson() {
+    var rec = STORE.currentRecord();
+    if (!rec) return null;
+    var pan;
+    try { pan = PAIPAN.compute(toEngineArgs(rec)); } catch (e) { return null; }
+    if (!pan || !pan.pillars) return null;
+    var snap = SCHOOLS.dailySnapshot(pan);
+    snap.profile.name = rec.name;
+    return JSON.stringify({
+      v: 1,
+      source: domainText(),
+      generatedAt: new Date().toISOString(),
+      disclaimer: DISCLAIMER,
+      snapshot: snap
+    }, null, 2);
+  }
+
+  var FLOAT_README = [
+    '玄机命理 · 桌面运势悬浮卡 — 使用说明',
+    '==================================================',
+    '',
+    '【运行方式】',
+    '1. 把本文件夹内的「玄机运势卡.ps1」「xuanji-data.json」放在同一目录；',
+    '2. 右键「玄机运势卡.ps1」→ 使用 PowerShell 运行（如被策略拦截，',
+    '   以管理员 PowerShell 执行：',
+    '   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned） ；',
+    '3. 悬浮卡默认出现在屏幕右上角，可按住拖动到任意位置，位置自动记忆；',
+    '4. 开机自启：卡片内勾选「开机自启」，即写入启动项快捷方式。',
+    '',
+    '【命盘档案互通】',
+    '· 悬浮卡的运势数据 = 网页端「通用运势」当日快照（xuanji-data.json），',
+    '  对应导出时网页选中的命盘档案；',
+    '· 每天打开网页工作台 → 选中档案 → 生成通用运势 → 重新下载快照覆盖，',
+    '  悬浮卡一分钟内自动换新（也可等待卡片自动检测）；',
+    '· 卡片内可新建/切换多套档案（与网页字段一致），点「查看完整命盘」',
+    '  会自动打开网页版并把该档案带入，无需重复录入。',
+    '',
+    '【跨端跳转】',
+    '悬浮卡 → 查看完整命盘：通过 URL 参数自动带入档案到网页端。',
+    '',
+    '【免责声明】',
+    '本工具生成内容基于传统命理体系的结构化推演，仅供个人娱乐与文化参考，',
+    '不构成任何医疗、投资、法律或其他决策依据。非商业用途。'
+  ].join('\n');
+
+  var FLOAT_PS1 = [
+    '# 玄机命理 · 桌面运势悬浮卡（PowerShell + WPF，零依赖）',
+    '# 数据同源：只读网页导出的 xuanji-data.json，自身不做任何排盘与推理',
+    'param([string]$DataPath = "")',
+    "$ErrorActionPreference = 'Stop'",
+    "Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms | Out-Null",
+    "$dir = Split-Path -Parent $MyInvocation.MyCommand.Path",
+    'if ($DataPath -eq "") { $DataPath = Join-Path $dir "xuanji-data.json" }',
+    '$cardsPath = Join-Path $dir "float-cards.json"',
+    '$posPath   = Join-Path $dir "float-pos.txt"',
+    '$offline = "天机算力离线，请打开网页工作台获取最新运势"',
+    'function Read-JsonFile($p) {',
+    '  if (Test-Path $p) { try { return (Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null } }',
+    '  return $null',
+    '}',
+    '$script:data = Read-JsonFile $DataPath',
+    '$script:cards = Read-JsonFile $cardsPath',
+    'if (-not $script:cards) { $script:cards = [pscustomobject]@{ cards = @(); current = 0 } }',
+    '[xml]$xaml = @"',
+    '<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"',
+    '        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"',
+    '        Title="玄机命理·运势悬浮卡" Width="340" Height="470"',
+    '        WindowStyle="None" AllowsTransparency="True" Background="Transparent"',
+    '        Topmost="True" ShowInTaskbar="False" StartPosition="Manual">',
+    '  <Border x:Name="Root" Background="#F016242E" CornerRadius="14" BorderBrush="#80C9A961" BorderThickness="1">',
+    '    <Grid>',
+    '      <Grid.RowDefinitions>',
+    '        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/>',
+    '        <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>',
+    '      </Grid.RowDefinitions>',
+    '      <Border Grid.Row="0" x:Name="StaleBar" Background="#5C8C2C2C" Padding="8,4" Visibility="Collapsed">',
+    '        <TextBlock x:Name="StaleText" Foreground="#F0D9C9C9" FontSize="11" TextWrapping="Wrap"/>',
+    '      </Border>',
+    '      <Grid Grid.Row="1" Margin="14,10,14,4">',
+    '        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>',
+    '        <StackPanel Orientation="Horizontal" Grid.Column="0">',
+    '          <TextBlock Text="☯" Foreground="#C9A961" FontSize="15" VerticalAlignment="Center" Margin="0,0,6,0"/>',
+    '          <TextBlock Text="玄机命理 · 今日运势" Foreground="#E8EDF4" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>',
+    '        </StackPanel>',
+    '        <Button x:Name="BtnEdit"  Content="档案" Grid.Column="1" Style="{x:Null}" Background="Transparent" Foreground="#C9A961" BorderThickness="0" FontSize="12" Cursor="Hand" Margin="0,0,8,0"/>',
+    '        <Button x:Name="BtnMini"  Content="—"  Grid.Column="2" Background="Transparent" Foreground="#949BA8" BorderThickness="0" FontSize="12" Cursor="Hand" Margin="0,0,8,0"/>',
+    '        <Button x:Name="BtnClose" Content="×"  Grid.Column="3" Background="Transparent" Foreground="#949BA8" BorderThickness="0" FontSize="13" Cursor="Hand"/>',
+    '      </Grid>',
+    '      <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Padding="14,4,14,0">',
+    '        <StackPanel x:Name="MainPane">',
+    '          <Grid x:Name="EditGrid" Visibility="Collapsed" Margin="0,0,0,8">',
+    '            <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>',
+    '            <Grid.ColumnDefinitions><ColumnDefinition Width="52"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>',
+    '            <TextBlock Text="名称" Foreground="#949BA8" FontSize="12" Grid.Row="0" VerticalAlignment="Center"/>',
+    '            <TextBox x:Name="InName" Grid.Row="0" Grid.Column="1" Margin="0,2"/>',
+    '            <TextBlock Text="性别" Foreground="#949BA8" FontSize="12" Grid.Row="1" VerticalAlignment="Center"/>',
+    '            <ComboBox x:Name="InSex" Grid.Row="1" Grid.Column="1" Margin="0,2"><ComboBoxItem Content="男"/><ComboBoxItem Content="女"/></ComboBox>',
+    '            <TextBlock Text="年月日" Foreground="#949BA8" FontSize="12" Grid.Row="2" VerticalAlignment="Center"/>',
+    '            <TextBox x:Name="InDate" Grid.Row="2" Grid.Column="1" Margin="0,2" ToolTip="格式：1990-5-15（公历）"/>',
+    '            <TextBlock Text="时辰" Foreground="#949BA8" FontSize="12" Grid.Row="3" VerticalAlignment="Center"/>',
+    '            <TextBox x:Name="InShichen" Grid.Row="3" Grid.Column="1" Margin="0,2" ToolTip="如：午"/>',
+    '            <TextBlock Text="地区" Foreground="#949BA8" FontSize="12" Grid.Row="4" VerticalAlignment="Center"/>',
+    '            <TextBox x:Name="InPlace" Grid.Row="4" Grid.Column="1" Margin="0,2"/>',
+    '            <Button x:Name="BtnSaveCard" Content="保存档案" Grid.Row="5" Grid.Column="1" Background="#2A70B8" Foreground="White" BorderThickness="0" Margin="0,6,0,2" Cursor="Hand"/>',
+    '          </Grid>',
+    '          <StackPanel x:Name="ViewPane">',
+    '            <TextBlock x:Name="TxtTone" FontSize="30" FontWeight="Bold" Foreground="#C9A961"/>',
+    '            <TextBlock x:Name="TxtToneNote" Foreground="#949BA8" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,8"/>',
+    '            <TextBlock x:Name="TxtFour" Foreground="#E8EDF4" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8"/>',
+    '            <TextBlock x:Name="TxtYi"   Foreground="#949BA8" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>',
+    '            <TextBlock x:Name="TxtJi"   Foreground="#949BA8" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,4"/>',
+    '            <TextBlock x:Name="TxtWarn" Foreground="#C9A961" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,8"/>',
+    '            <TextBlock x:Name="TxtLucky" Foreground="#E8EDF4" FontSize="11" Margin="0,0,0,8"/>',
+    '            <Border Background="#22242E" CornerRadius="8" Padding="10,8" Margin="0,0,0,8">',
+    '              <TextBlock x:Name="TxtQuote" Foreground="#C9D4DC" FontSize="11" TextWrapping="Wrap"/>',
+    '            </Border>',
+    '            <TextBlock Text="── 三派天机简析 ──" Foreground="#6B7280" FontSize="10" TextAlignment="Center" Margin="0,0,0,6"/>',
+    '            <TextBlock x:Name="TxtSchools" Foreground="#949BA8" FontSize="11" TextWrapping="Wrap"/>',
+    '          </StackPanel>',
+    '        </StackPanel>',
+    '      </ScrollViewer>',
+    '      <Separator Grid.Row="3" Background="#33C9A961" Margin="14,6"/>',
+    '      <Grid Grid.Row="4" Margin="14,0,14,12">',
+    '        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>',
+    '        <CheckBox x:Name="ChkAuto" Content="开机自启" Foreground="#949BA8" FontSize="11" VerticalAlignment="Center"/>',
+    '        <Button x:Name="BtnOpen" Content="查看完整命盘 →" Grid.Column="1" Background="#2A70B8" Foreground="White" BorderThickness="0" Padding="10,5" Cursor="Hand"/>',
+    '      </Grid>',
+    '    </Grid>',
+    '  </Border>',
+    '</Window>',
+    '"@',
+    '$reader = New-Object System.Xml.XmlNodeReader $xaml',
+    '$window = [Windows.Markup.XamlReader]::Load($reader)',
+    'function Find($n) { return $window.FindName($n) }',
+    '$root = Find "Root"; $staleBar = Find "StaleBar"; $staleText = Find "StaleText"',
+    '$txtTone = Find "TxtTone"; $txtToneNote = Find "TxtToneNote"; $txtFour = Find "TxtFour"',
+    '$txtYi = Find "TxtYi"; $txtJi = Find "TxtJi"; $txtWarn = Find "TxtWarn"',
+    '$txtLucky = Find "TxtLucky"; $txtQuote = Find "TxtQuote"; $txtSchools = Find "TxtSchools"',
+    '$editGrid = Find "EditGrid"; $viewPane = Find "ViewPane"',
+    'function Show-Offline($why) {',
+    '  $txtTone.Text = "—"; $txtTone.Text = "离线"; $txtTone.Foreground = "#949BA8"',
+    '  $txtToneNote.Text = $offline',
+    '  $txtFour.Text = ""; $txtYi.Text = ""; $txtJi.Text = ""; $txtWarn.Text = ""',
+    '  $txtLucky.Text = ""; $txtQuote.Text = ""; $txtSchools.Text = ""',
+    '  $staleBar.Visibility = "Visible"; $staleText.Text = $why',
+    '}',
+    'function Render-Data($d) {',
+    '  $s = $d.snapshot',
+    '  $staleBar.Visibility = "Collapsed"',
+    '  $txtTone.Foreground = "#C9A961"',
+    '  $txtTone.Text = $s.daily.tone',
+    '  $txtToneNote.Text = $s.daily.toneNote',
+    '  $txtFour.Text = (($s.daily.four | ForEach-Object { $_.k + "：" + $_.v }) -join "`n")',
+    '  $txtYi.Text   = "宜：" + $s.daily.yi',
+    '  $txtJi.Text   = "忌：" + $s.daily.ji',
+    '  $txtWarn.Text = $s.daily.warn',
+    '  $txtLucky.Text = "幸运色：" + $s.daily.luckyColor + "　幸运方位：" + $s.daily.luckyDir',
+    '  $txtQuote.Text = "「" + $s.daily.quote + "」"',
+    '  $sc = $s.schools',
+    '  $txtSchools.Text = "【天机道】" + $sc.nihaixia + "`n【四柱】" + $sc.bazi + "`n【紫微】" + $sc.ziwei',
+    '}',
+    'function Render-All {',
+    '  if (-not $script:data) { Show-Offline "未找到 xuanji-data.json——请从网页端「悬浮卡」下载并放在本目录"; return }',
+    '  if (-not $script:data.snapshot) { Show-Offline "快照格式不正确，请重新从网页端导出"; return }',
+    '  Render-Data $script:data',
+    '  $today = Get-Date -Format "yyyy-MM-dd"',
+    '  if ($script:data.snapshot.date -ne $today) {',
+    '    $staleBar.Visibility = "Visible"',
+    '    $staleText.Text = "以上是 " + $script:data.snapshot.date + " 的快照——悬浮卡不内置算力，请打开网页重新导出今日运势"',
+    '  }',
+    '}',
+    'Render-All',
+    '$timer = New-Object System.Windows.Threading.DispatcherTimer',
+    '$timer.Interval = [TimeSpan]::FromSeconds(60)',
+    '$timer.Add_Tick({',
+    '  if (Test-Path $DataPath) {',
+    '    $mt = (Get-Item $DataPath).LastWriteTime',
+    '    if (-not $script:lastMt -or $mt -ne $script:lastMt) { $script:lastMt = $mt; $script:data = Read-JsonFile $DataPath; Render-All }',
+    '  }',
+    '})',
+    '$script:lastMt = if (Test-Path $DataPath) { (Get-Item $DataPath).LastWriteTime } else { $null }',
+    '$timer.Start()',
+    '# 位置记忆',
+    'if (Test-Path $posPath) {',
+    '  $pv = (Get-Content $posPath -Raw).Split(",")',
+    '  if ($pv.Count -ge 2) { $window.WindowStartupLocation = "Manual"; $window.Left = [double]$pv[0]; $window.Top = [double]$pv[1] }',
+    '} else {',
+    '  $window.WindowStartupLocation = "Manual"',
+    '  $wa = [System.Windows.SystemParameters]::WorkArea',
+    '  $window.Left = $wa.Right - $window.Width - 24; $window.Top = $wa.Top + 24',
+    '}',
+    '$window.Add_MouseLeftButtonDown({ $window.DragMove() })',
+    '$window.Add_Closing({',
+    '  ($window.Left.ToString() + "," + $window.Top.ToString()) | Out-File $posPath -Encoding ASCII',
+    '})',
+    '(Find "BtnClose").Add_Click({ $window.Close() })',
+    '(Find "BtnMini").Add_Click({',
+    '  if ($window.Height -gt 100) { $script:prevH = $window.Height; $window.Height = 64 }',
+    '  else { $window.Height = $script:prevH }',
+    '})',
+    '(Find "BtnEdit").Add_Click({',
+    '  $show = $editGrid.Visibility -eq "Collapsed"',
+    '  $editGrid.Visibility = if ($show) { "Visible" } else { "Collapsed" }',
+    '})',
+    '(Find "BtnSaveCard").Add_Click({',
+    '  $c = [pscustomobject]@{',
+    '    name = (Find "InName").Text; sex = if ((Find "InSex").Text -eq "女") { "female" } else { "male" };',
+    '    cal = "solar"; year = 0; month = 0; day = 0; shichen = (Find "InShichen").Text; place = (Find "InPlace").Text',
+    '  }',
+    '  $dp = (Find "InDate").Text.Split("-")',
+    '  if ($dp.Count -ge 3) { $c.year = [int]$dp[0]; $c.month = [int]$dp[1]; $c.day = [int]$dp[2] }',
+    '  $list = @($script:cards.cards)',
+    '  $list += $c',
+    '  $script:cards = [pscustomobject]@{ cards = $list; current = $list.Count - 1 }',
+    '  ($script:cards | ConvertTo-Json -Depth 4) | Out-File $cardsPath -Encoding UTF8',
+    '  $editGrid.Visibility = "Collapsed"',
+    '  [System.Windows.MessageBox]::Show("档案已保存（悬浮卡本地）", "玄机命理")',
+    '})',
+    '$autoPath = Join-Path ([Environment]::GetFolderPath("Startup")) "玄机运势卡.lnk"',
+    '$chk = Find "ChkAuto"',
+    '$chk.IsChecked = Test-Path $autoPath',
+    '$chk.Add_Click({',
+    '  if ($chk.IsChecked -eq $true) {',
+    '    $ws = New-Object -ComObject WScript.Shell',
+    '    $sc = $ws.CreateShortcut($autoPath)',
+    '    $sc.TargetPath = "powershell.exe"',
+    '    $sc.Arguments = "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"" + $MyInvocation.MyCommand.Path + "`""',
+    '    $sc.Save()',
+    '  } elseif (Test-Path $autoPath) { Remove-Item $autoPath -Force }',
+    '})',
+    '(Find "BtnOpen").Add_Click({',
+    '  $idx = Join-Path $dir "index.html"',
+    '  if (-not (Test-Path $idx)) { [System.Windows.MessageBox]::Show("未找到 index.html（请把悬浮卡放在网页工作台目录）"); return }',
+    '  $c = $null',
+    '  if ($script:cards -and $script:cards.cards.Count -gt 0) { $i = [Math]::Min($script:cards.current, $script:cards.cards.Count-1); $c = $script:cards.cards[$i] }',
+    '  $q = "auto=1"',
+    '  if ($c) {',
+    '    $q += "&name=" + [Uri]::EscapeDataString($c.name) + "&sex=" + $c.sex + "&cal=" + $c.cal +',
+    '          "&y=" + $c.year + "&m=" + $c.month + "&d=" + $c.day +',
+    '          "&shichen=" + [Uri]::EscapeDataString($c.shichen) + "&place=" + [Uri]::EscapeDataString($c.place)',
+    '  }',
+    '  Start-Process ("file:///" + ($idx -replace "\\\\", "/") + "?" + $q)',
+    '  $window.WindowState = "Minimized"',
+    '})',
+    '[System.Windows.Application]::new().Run($window)'
+  ].join('\n');
+
+  var FLOAT_README_FILENAME = '使用说明.txt';
+
+  function bindFloatCard() {
+    var btn = U.$('#btnFloatCard');
+    var panel = U.$('#floatPanel');
+    if (!btn || !panel) return;
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { panel.style.display = 'none'; });
+
+    var rec = STORE.currentRecord();
+    var name = rec ? rec.name : '未选择档案';
+
+    U.$('#btnDlPs1').addEventListener('click', function () {
+      U.download('玄机运势卡.ps1', '\uFEFF' + FLOAT_PS1);
+      U.toast('已下载悬浮卡程序（与数据文件放同一目录后运行）', 'ok');
+    });
+    U.$('#btnDlJson').addEventListener('click', function () {
+      var json = buildSnapshotJson();
+      if (!json) { U.toast('当前没有命盘档案——请先在「命盘档案」新建并生成运势', 'fail'); return; }
+      U.download('xuanji-data.json', json);
+      U.toast('已导出当日运势快照（' + name + '）', 'ok');
+    });
+    U.$('#btnDlTxt').addEventListener('click', function () {
+      U.download(FLOAT_README_FILENAME, FLOAT_README);
+      U.toast('已下载使用说明', 'ok');
+    });
+  }
+
+  /* URL 参数自动带入（悬浮卡 → 网页，任务书·核心联动）
+     手写解析而非 URLSearchParams：file:// 双击与老内核环境更稳（smoke 沙箱亦无此 API） */
+  function getQueryParam(name) {
+    var m = new RegExp('[?&]' + name + '=([^&]*)').exec(location.search || '');
+    return m ? decodeURIComponent(m[1].replace(/\+/g, ' ')) : null;
+  }
+  function bindUrlImport() {
+    if (getQueryParam('auto') !== '1' || !getQueryParam('y')) return;
+    var rec = {
+      name: getQueryParam('name') || '悬浮卡档案',
+      sex: getQueryParam('sex') === 'female' ? 'female' : 'male',
+      cal: getQueryParam('cal') === 'lunar' ? 'lunar' : 'solar',
+      year: parseInt(getQueryParam('y'), 10),
+      month: parseInt(getQueryParam('m'), 10),
+      day: parseInt(getQueryParam('d'), 10),
+      shichen: getQueryParam('shichen') || '子',
+      place: getQueryParam('place') || '',
+      useTrueSolarTime: false
+    };
+    if (!rec.year || !rec.month || !rec.day) return;
+    var added = STORE.add(rec);
+    STORE.setCurrent(added.id);
+    renderArchive(); updateCastline();
+    U.toast('已自动带入悬浮卡命盘档案：' + rec.name, 'ok');
+    go('archive');
+  }
+
+
   function bindTopbar() {
     U.$('#btnGotoArchive').addEventListener('click', function () { go('archive'); });
+    bindFloatCard();
     U.$('#btnGlobalReset').addEventListener('click', function () {
       if (!global.confirm('确定重置？将清空四个分区的解析结果与问答记录（命盘档案保留）。')) return;
       SCHOOLS_LIST.forEach(function (s) {
