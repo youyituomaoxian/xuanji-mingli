@@ -33,6 +33,9 @@
     bindTopbar();
     bindUrlImport();
 
+    /* 初始即 archive 视图 → 进入沉浸模式（topbar/navbar 半透明叠 banner） */
+    syncHeroState('home');
+
     renderArchive();
     updateCastline();
     checkResources();
@@ -87,6 +90,13 @@
     });
   }
 
+  /* 首页（home）= 星台 Banner 展示视图：顶栏/导航条尺寸恒定，仅首页变半透明叠于 banner（v9.3 简化方案） */
+  function syncHeroState(view) {
+    var app = U.$('.app');
+    if (!app) return;
+    app.classList.toggle('mode-home', view === 'home');
+  }
+
   function go(view) {
     U.$$('.nav__item').forEach(function (b) {
       if (b.getAttribute('data-view') === view) b.setAttribute('aria-current', 'page');
@@ -96,6 +106,8 @@
     U.$$('.view').forEach(function (v) {
       v.classList.toggle('is-active', v.getAttribute('data-view') === view);
     });
+    /* 首页沉浸双态切换（v9.2）：archive 且未被用户退出 → banner 态 */
+    syncHeroState(view);
     U.$('.main').scrollTop = 0;
     /* 进入命理分区时，若已有命盘则自动生成 */
     if (SCHOOLS_LIST.indexOf(view) >= 0) {
@@ -1373,13 +1385,9 @@
   function bindTopbar() {
     U.$('#btnGotoArchive').addEventListener('click', function () { go('archive'); });
     bindFloatCard();
-    /* 首页 Banner CTA（v9） */
+    /* 首页 Banner CTA：录入生辰 → 直接切到无 banner 的档案表单（v9.3） */
     var heroCta = U.$('#heroCta');
-    if (heroCta) heroCta.addEventListener('click', function () {
-      var card = U.$('#castCard');
-      if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      U.$('#castName').focus();
-    });
+    if (heroCta) heroCta.addEventListener('click', function () { go('archive'); U.$('#castName').focus(); });
     var heroGhost = U.$('#heroGhost');
     if (heroGhost) heroGhost.addEventListener('click', function () { go('fortune'); });
     U.$('#btnGlobalReset').addEventListener('click', function () {

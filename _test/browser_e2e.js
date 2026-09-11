@@ -46,6 +46,10 @@ function ok(cond, label, detail) {
       const navTxt = ((await p.textContent('#navResStatus')) || '').replace(/\s+/g, '');
       ok(navTxt.indexOf('失败') < 0, '左下角无「失败」字样');
 
+      /* 初始视图为「首页」banner → 先切到命盘档案 */
+      await p.click('[data-view="archive"].nav__item');
+      await p.waitForTimeout(600);
+
       /* 建档（generate() 依赖「命盘档案」中的记录）→ 生成 */
       await p.click('#btnFillDemo').catch(() => {});
       await p.waitForTimeout(300);

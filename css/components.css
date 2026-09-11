@@ -856,10 +856,17 @@ body::before {
 }
 .hero__inner {
   position: absolute;
-  left: clamp(var(--sp-6), 5%, 75px);
-  right: clamp(var(--sp-6), 5%, 75px);
-  bottom: clamp(56px, 12%, 120px);
+  inset: 0;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;      /* 上下居中（用户定稿：大气） */
+  align-items: center;
+  text-align: center;
+  padding: 0 var(--sp-8);
+  /* 文字护幕：柔和椭圆暗晕压住视频亮区，保证白字可读（非硬边卡片） */
+  background: radial-gradient(ellipse 62% 58% at 50% 52%,
+    rgba(5, 7, 10, 0.58) 0%, rgba(5, 7, 10, 0.38) 55%, rgba(5, 7, 10, 0) 78%);
 }
 .hero__kicker {
   font-family: var(--ff-mono);
@@ -871,17 +878,19 @@ body::before {
 .hero__headline {
   font-family: var(--ff-serif);
   font-weight: 400;
-  font-size: clamp(30px, calc(var(--fs-28) * 1.9), 58px);
-  line-height: 1.28;
+  font-size: clamp(34px, 4.6vw, 64px);
+  line-height: 1.3;
+  letter-spacing: 0.08em;
   color: #fafafa;
-  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 28px rgba(0, 0, 0, 0.6);
   margin: 0 0 var(--sp-5);
 }
 .hero__headline span { display: block; }
 .hero__sub {
   font-size: var(--fs-16);
-  line-height: 1.9;
-  color: rgba(233, 238, 244, 0.82);
+  line-height: 2;
+  color: rgba(240, 244, 248, 0.92);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.65);
   margin: 0 0 var(--sp-6);
 }
 .hero__sub span { display: block; }
@@ -937,7 +946,40 @@ body::before {
   .hero__kicker, .hero__headline, .hero__sub, .hero__actions, .hero__scrollhint { animation: none !important; opacity: 1 !important; }
 }
 
-/* ---------- 各分区宣传语（楷体 · 黛青底鎏金衬） ---------- */
+/* ---------- 各分区宣传语（楷体 · 鎏金衬） —— 完整定义见文末 v9.1 段 ---------- */
+
+/* =========================================================================
+ * v9.3 · 首页（home）模式：顶栏/导航条尺寸恒定，仅首页变半透明叠于通栏 banner
+ * 零跳动关键：grid 三行（56/44/1fr）在所有页面保持不变；
+ * banner 以负 margin 上提垫在半透明氛围带之下，撑满第一屏。
+ * ====================================================================== */
+.app.mode-home .topbar {
+  background: linear-gradient(135deg, #1e3540 0%, #16242e 100%);   /* 不透明深色，与其他页一致 */
+  border-bottom-color: rgba(201, 169, 97, 0.14);
+  box-shadow: none;
+}
+.app.mode-home .nav {
+  background: rgba(10, 14, 20, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom-color: rgba(201, 169, 97, 0.12);
+}
+.app.mode-home .brand { background: transparent; border-right-color: rgba(201, 169, 97, 0.16); }
+/* 关键：放开 main 的裁剪，让 banner 能上提到氛围带之后（半透明才透出视频而非浅底）；
+   首页为单屏展示，无滚动需求 */
+.app.mode-home .main { overflow: visible; }
+/* 氛围带压在 banner 之上（DOM 中 main 靠后，需显式提层） */
+.topbar, .nav { position: relative; z-index: 30; }
+.app.mode-home .hero {
+  margin-top: calc(-1 * (var(--h-top) + 44px));   /* 上提垫在半透明氛围带之下 */
+  height: 100vh;                                   /* 撑满第一屏 */
+  width: 100vw;                                    /* 通栏 */
+  margin-left: calc(50% - 50vw);
+  border-radius: 0;
+  margin-bottom: var(--sp-8);
+}
+
+/* ---------- 分区宣传语（楷体 · 黛青底鎏金衬） ---------- */
 .pagehead__slogan {
   margin-top: var(--sp-2);
   font-family: var(--ff-serif);

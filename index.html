@@ -37,8 +37,10 @@
 <!-- ============ 页内导航条（原左侧作业树上移；右侧：资源状态） ============ -->
 <nav class="nav">
   <div class="nav__group">
-    <span class="nav__label">导航</span>
-    <button class="nav__item" data-view="archive" aria-current="page">
+    <button class="nav__item" data-view="home" aria-current="page">
+      <span class="nav__gua" aria-hidden="true">☯</span><span class="nav__text">首页</span>
+    </button>
+    <button class="nav__item" data-view="archive">
       <span class="nav__gua" aria-hidden="true">☷</span><span class="nav__idx">00</span><span class="nav__text">命盘档案</span>
     </button>
     <button class="nav__item" data-view="nihaixia">
@@ -83,10 +85,8 @@
   <main class="main">
     <div class="main__inner" id="mainInner">
 
-      <!-- ======== 视图：命盘档案 ======== -->
-      <section class="view is-active" data-view="archive">
-
-        <!-- ======== 首页 Banner：星台推演（暗色电影感 · 视频底 · 参考规格化排版） ======== -->
+      <!-- ======== 视图：首页（星台 Banner 展示） ======== -->
+      <section class="view is-active" data-view="home">
         <div class="hero" id="heroBanner">
           <div class="hero__plate">
             <video class="hero__video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
@@ -96,21 +96,21 @@
           <div class="hero__inner">
             <p class="hero__kicker">XUANJI · 玄机命理</p>
             <h2 class="hero__headline">
-              <span>玄之又玄，窥干支天机；</span>
-              <span>阴阳流转，观一世沉浮。</span>
+              <span>玄之又玄，众妙之门。</span>
             </h2>
             <p class="hero__sub">
-              <span>一次录入生辰，四大命理体系同步推演；</span>
-              <span>从命盘档案到每日气运，像观星一样看清自己的轨迹。</span>
+              <span>以阴阳八卦为纲，天干地支为纪，推演命局时序，窥探天地气机。</span>
+              <span>知命而不困于命，观运以择进退。</span>
             </p>
             <div class="hero__actions">
               <button class="btn btn--primary" id="heroCta">开始 · 录入生辰</button>
-              <button class="btn btn--ghost" id="heroGhost">查看今日运势</button>
             </div>
           </div>
-          <div class="hero__scrollhint" aria-hidden="true">向下滚动 · 建立命盘<span class="hero__scrollline"></span></div>
         </div>
+      </section>
 
+      <!-- ======== 视图：命盘档案 ======== -->
+      <section class="view" data-view="archive">
         <div class="pagehead">
           <div class="pagehead__main">
             <div class="pagehead__kicker">BASE / 00</div>
