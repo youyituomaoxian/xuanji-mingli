@@ -989,3 +989,39 @@ body::before {
 }
 .pagehead__slogan::before { content: '〖 '; color: var(--c-liujin-deep); }
 .pagehead__slogan::after  { content: ' 〗'; color: var(--c-liujin-deep); }
+
+/* =========================================================================
+ * v10 · 移动端适配（375~1024 视口 + 移动浏览器 dvh/安全区）
+ * ====================================================================== */
+
+/* 氛围带总高变量（topbar56 + nav44），hero 上下公式统一用 */
+:root { --bars-h: calc(var(--h-top) + 44px); }
+/* hero 精确填满第一屏：上提氛围带高度，高度补回同值（底部不露浅底） */
+.hero { height: calc(100vh + var(--bars-h)); margin-top: calc(-1 * var(--bars-h)); }
+.app.mode-home .hero { height: calc(100vh + var(--bars-h)); }
+@supports (height: 100dvh) {
+  .hero { height: calc(100dvh + var(--bars-h)); }
+  .app.mode-home .hero { height: calc(100dvh + var(--bars-h)); }
+  .app.mode-home .main { height: 100dvh; }
+}
+
+/* 移动端浏览器安全区（刘海/状态栏） */
+@media (max-width: 820px) {
+  .topbar { padding-top: env(safe-area-inset-top, 0); }
+  .hero { min-height: 540px; }
+  .hero__inner { padding: 96px var(--sp-5) var(--sp-6); }
+  .hero__headline { font-size: clamp(24px, 7vw, 30px); }
+  .hero__sub { font-size: var(--fs-14); }
+  .hero__actions .btn { width: 100%; }
+  .hero__actions .btn--primary { order: -1; }
+  /* 命盘大表：横向滚动，不挤压文字 */
+  .rsec__body { overflow-x: auto; }
+  .rsec__body table { min-width: 620px; }
+  .notice { font-size: var(--fs-13); }
+}
+@media (max-width: 600px) {
+  /* 窄屏：顶栏只留品牌与操作按钮，生辰摘要移除（档案页可见） */
+  .castline { display: none; }
+  .main__inner { padding: var(--sp-5) var(--sp-4) var(--sp-10); }
+  .pagehead__slogan { font-size: var(--fs-14); }
+}

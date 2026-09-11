@@ -334,7 +334,7 @@ a:hover { color: var(--c-liujin-deep); }
     grid-template-areas: "topbar" "navbar" "main";
   }
   .brand { border-right: none; }
-  .nav { padding: 0 var(--sp-3); }
+  .nav { padding: 0 var(--sp-3); justify-content: flex-start; }   /* 溢出容器禁用居中，防左侧截断 */
   .nav__group { overflow-x: auto; }
   .nav__item { padding: 0 var(--sp-3); }
   .nav__item[aria-current="page"]::before { display: none; }
