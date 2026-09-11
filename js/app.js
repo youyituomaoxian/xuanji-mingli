@@ -1010,11 +1010,9 @@
     '==================================================',
     '',
     '【运行方式】',
-    '1. 把本文件夹内的「玄机运势卡.ps1」「xuanji-data.json」放在同一目录；',
-    '2. 右键「玄机运势卡.ps1」→ 使用 PowerShell 运行（如被策略拦截，',
-    '   以管理员 PowerShell 执行：',
-    '   Set-ExecutionPolicy -Scope CurrentUser RemoteSigned） ；',
-    '3. 悬浮卡默认出现在屏幕右上角，可按住拖动到任意位置，位置自动记忆；',
+    '1. 解压后，把压缩包里的全部文件放在同一个文件夹；',
+    '2. 双击「start-float-card.bat」——悬浮卡即刻出现在屏幕右上角；',
+    '3. 按住卡片可拖动到任意位置，位置自动记忆；可最小化/收起/关闭；',
     '4. 开机自启：卡片内勾选「开机自启」，即写入启动项快捷方式。',
     '',
     '【命盘档案互通】',
@@ -1237,6 +1235,79 @@
 
   var FLOAT_README_FILENAME = '使用说明.txt';
 
+  /* ---- 极简 ZIP 打包器（STORE 无压缩 + CRC32，UTF-8 文件名，零依赖）----
+     用途：悬浮卡程序包一键下载。Chrome 对 .ps1/.bat 单文件下载有安全拦截，
+     .zip 则畅通——包内放双击启动器，用户解压后双击即用。 */
+  var ZIP_CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function zipCrc32(bytes) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < bytes.length; i++) c = ZIP_CRC_TABLE[(c ^ bytes[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function makeZip(files) {
+    /* files: [{ name: string, data: Uint8Array }] */
+    var chunks = [], central = [], offset = 0;
+    var now = new Date();
+    var dosTime = ((now.getHours() & 0x1F) << 11) | ((now.getMinutes() & 0x3F) << 5) | ((now.getSeconds() / 2) & 0x1F);
+    var dosDate = (((now.getFullYear() - 1980) & 0x7F) << 9) | ((now.getMonth() + 1) << 5) | (now.getDate() & 0x1F);
+    function u16(v) { return [v & 0xFF, (v >>> 8) & 0xFF]; }
+    function u32(v) { return [v & 0xFF, (v >>> 8) & 0xFF, (v >>> 16) & 0xFF, (v >>> 24) & 0xFF]; }
+    files.forEach(function (f) {
+      var nameBytes = new TextEncoder().encode(f.name);
+      var crc = zipCrc32(f.data);
+      var local = [].concat(u32(0x04034B50), u16(20), u16(0x0800), u16(0), u16(dosTime), u16(dosDate),
+        u32(crc), u32(f.data.length), u32(f.data.length), u16(nameBytes.length), u16(0));
+      chunks.push(new Uint8Array(local), nameBytes, f.data);
+      central.push({ name: nameBytes, crc: crc, size: f.data.length, offset: offset });
+      offset += local.length + nameBytes.length + f.data.length;
+    });
+    var cdStart = offset;
+    var cdSize = 0;
+    central.forEach(function (e) {
+      var cd = [].concat(u32(0x02014B50), u16(20), u16(20), u16(0x0800), u16(0), u16(dosTime), u16(dosDate),
+        u32(e.crc), u32(e.size), u32(e.size), u16(e.name.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(e.offset));
+      chunks.push(new Uint8Array(cd), e.name);
+      cdSize += cd.length + e.name.length;
+    });
+    var eocd = [].concat(u32(0x06054B50), u16(0), u16(0), u16(central.length), u16(central.length),
+      u32(cdSize), u32(cdStart), u16(0));
+    chunks.push(new Uint8Array(eocd));
+    var total = chunks.reduce(function (s, c) { return s + c.length; }, 0);
+    var outBytes = new Uint8Array(total);
+    var pos = 0;
+    chunks.forEach(function (c) { outBytes.set(c, pos); pos += c.length; });
+    return outBytes;
+  }
+  function strBytes(s) { return new TextEncoder().encode(s); }
+
+  /* 悬浮卡启动器（.bat 纯 ASCII，双击即运行，自动绕过 ExecutionPolicy） */
+  var FLOAT_BAT = [
+    '@echo off',
+    'title XuanJi Float Card',
+    'cd /d "%~dp0"',
+    'powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "%~dp0float-card.ps1"',
+    'if errorlevel 1 pause'
+  ].join('\r\n');
+
+  function buildFloatZip() {
+    var json = buildSnapshotJson();
+    return {
+      bat: FLOAT_BAT,
+      ps1: '\uFEFF' + FLOAT_PS1,
+      json: json,
+      readme: FLOAT_README,
+      hasSnapshot: !!json
+    };
+  }
+
   function bindFloatCard() {
     var btn = U.$('#btnFloatCard');
     var panel = U.$('#floatPanel');
@@ -1251,19 +1322,23 @@
     var rec = STORE.currentRecord();
     var name = rec ? rec.name : '未选择档案';
 
-    U.$('#btnDlPs1').addEventListener('click', function () {
-      U.download('玄机运势卡.ps1', '\uFEFF' + FLOAT_PS1);
-      U.toast('已下载悬浮卡程序（与数据文件放同一目录后运行）', 'ok');
+    U.$('#btnDlZip').addEventListener('click', function () {
+      var pk = buildFloatZip();
+      var jsonBytes = pk.hasSnapshot ? strBytes(pk.json) : null;
+      var files = [
+        { name: 'start-float-card.bat', data: strBytes(pk.bat) },
+        { name: 'float-card.ps1', data: strBytes(pk.ps1) },
+        { name: 'README-使用说明.txt', data: strBytes('\uFEFF' + pk.readme) }
+      ];
+      if (jsonBytes) files.push({ name: 'xuanji-data.json', data: jsonBytes });
+      U.download('玄机运势卡.zip', makeZip(files));
+      U.toast(jsonBytes ? '程序包已下载（含今日快照），解压后双击 start-float-card.bat' : '程序包已下载（未含快照——请先建档案并生成运势）', jsonBytes ? 'ok' : 'fail');
     });
     U.$('#btnDlJson').addEventListener('click', function () {
       var json = buildSnapshotJson();
       if (!json) { U.toast('当前没有命盘档案——请先在「命盘档案」新建并生成运势', 'fail'); return; }
       U.download('xuanji-data.json', json);
-      U.toast('已导出当日运势快照（' + name + '）', 'ok');
-    });
-    U.$('#btnDlTxt').addEventListener('click', function () {
-      U.download(FLOAT_README_FILENAME, FLOAT_README);
-      U.toast('已下载使用说明', 'ok');
+      U.toast('已导出当日运势快照（' + name + '）——覆盖悬浮卡目录下的同名文件即可更新', 'ok');
     });
   }
 

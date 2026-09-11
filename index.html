@@ -66,15 +66,15 @@
       <p style="font-size:var(--fs-12);color:var(--tx-secondary);line-height:1.7;margin-bottom:var(--sp-3)">
         悬浮卡是 Windows 桌面常驻小窗（置顶、可拖动、可最小化），运势数据与网页版完全同源——
         它自身不做推算，只展示网页导出的当日快照。</p>
-      <p style="font-size:var(--fs-12);color:var(--tx-tertiary);margin-bottom:var(--sp-3)">
-        下载后把三个文件放在<b>同一文件夹</b>，右键 .ps1 → 使用 PowerShell 运行。</p>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn btn--primary btn--sm" id="btnDlPs1" style="cursor:pointer">① 下载悬浮卡程序（.ps1）</button>
-        <button class="btn btn--ghost btn--sm" id="btnDlJson" style="cursor:pointer">② 下载今日运势快照（.json）</button>
-        <button class="btn btn--ghost btn--sm" id="btnDlTxt" style="cursor:pointer">③ 下载使用说明（.txt）</button>
+        <button class="btn btn--primary btn--sm" id="btnDlZip" style="cursor:pointer">① 下载悬浮卡程序包（.zip）</button>
+        <button class="btn btn--ghost btn--sm" id="btnDlJson" style="cursor:pointer">② 仅更新今日运势快照（.json）</button>
       </div>
+      <p style="font-size:var(--fs-12);color:var(--tx-secondary);margin-top:var(--sp-3);line-height:1.7">
+        <b>使用三步</b>：解压 → 双击 <b>start-float-card.bat</b> → 悬浮卡出现（含当日快照）。</p>
       <p style="font-size:var(--fs-11);color:var(--tx-tertiary);margin-top:var(--sp-3);line-height:1.6">
         · 快照对应当前选中的命盘档案，切换档案后重新下载即可；<br>
+        · 每日更新：打开本页 → 生成运势 → 点②覆盖悬浮卡目录下的 xuanji-data.json；<br>
         · 悬浮卡内点「查看完整命盘」会自动带入档案打开本页。</p>
     </div>
   </div>
