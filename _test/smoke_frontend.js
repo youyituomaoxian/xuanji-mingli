@@ -121,6 +121,7 @@ const document = {
 });
 
 const localStorageData = {};
+const sessionStorageData = {};
 const sandbox = {
   console, Math, Date, JSON, parseInt, parseFloat, isNaN, isFinite, Number, String,
   Boolean, Array, Object, RegExp, Error, RangeError, TypeError, encodeURIComponent,
@@ -132,6 +133,12 @@ const sandbox = {
     setItem: (k, v) => { localStorageData[k] = String(v); },
     removeItem: k => { delete localStorageData[k]; },
     clear: () => { Object.keys(localStorageData).forEach(k => delete localStorageData[k]); }
+  },
+  sessionStorage: {
+    getItem: k => (k in sessionStorageData ? sessionStorageData[k] : null),
+    setItem: (k, v) => { sessionStorageData[k] = String(v); },
+    removeItem: k => { delete sessionStorageData[k]; },
+    clear: () => { Object.keys(sessionStorageData).forEach(k => delete sessionStorageData[k]); }
   },
   location: { href: 'file:///', search: '' },
   fetch: () => Promise.reject(new Error('no network in smoke test')),
@@ -368,10 +375,34 @@ ST.pushLog('bazi', { q: 'q', a: 'a' });
 ok(ST.getLogs('bazi').length === 1, '提问日志可写可读');
 ST.remove(rec2.id);
 ok(ST.list().length === 1, '删除档案成功 (剩 ' + ST.list().length + ')');
-/* 持久化：新建第二个沙箱实例应能读回 */
-ok(!!localStorageData['xuanxue.archives.v1'], '已写入 localStorage');
-const reRead = JSON.parse(localStorageData['xuanxue.archives.v1']);
-ok(Array.isArray(reRead) && reRead.length === 1, 'localStorage 内容可反序列化');
+/* 持久化（隐私策略）：档案只落 sessionStorage（关页即销毁），
+   且启动时必须清除旧版 localStorage 残留 —— 绝不允许跨会话携带上一个人的命盘 */
+ok(!!localStorageData['xuanxue.archives.v1'] === false, '旧版 localStorage 残留已被清除（隐私要求）');
+ok(!!sessionStorageData['xuanxue.archives.s1'], '档案写入会话级 sessionStorage');
+const reRead = JSON.parse(sessionStorageData['xuanxue.archives.s1']);
+ok(Array.isArray(reRead) && reRead.length === 1, 'sessionStorage 内容可反序列化');
+
+/* 隐私：模拟「上一个人留下旧档案 → 下一个人打开」场景，必须是干净会话。
+   localStorage 共享（同浏览器残留），sessionStorage 独立（新标签页 = 新会话） */
+localStorageData['xuanxue.archives.v1'] = JSON.stringify([{ name: '上一位用户', year: 1990 }]);
+localStorageData['xuanxue.current.v1'] = 'leak-id';
+const sandbox2Data = {};
+const sandbox2 = Object.create(sandbox);
+sandbox2.sessionStorage = {
+  getItem: k => (k in sandbox2Data ? sandbox2Data[k] : null),
+  setItem: (k, v) => { sandbox2Data[k] = String(v); },
+  removeItem: k => { delete sandbox2Data[k]; },
+  clear: () => { Object.keys(sandbox2Data).forEach(k => delete sandbox2Data[k]); }
+};
+sandbox2.window = sandbox2;
+vm.createContext(sandbox2);
+for (const name2 of ['store']) {
+  const code2 = fs.readFileSync(path.join(ROOT, 'js', name2 + '.js'), 'utf8');
+  vm.runInContext(code2, sandbox2, { filename: 'js/' + name2 + '.js' });
+}
+ok(!('xuanxue.archives.v1' in localStorageData) && !('xuanxue.current.v1' in localStorageData),
+   '重新打开页面自动清除 localStorage 旧档案（隐私要求）');
+ok(sandbox2.STORE.list().length === 0, '新会话不携带上一位用户的命盘档案');
 
 /* ---------- 8. UI 渲染原语 ---------- */
 section('8. UI 渲染原语（ui.js）');

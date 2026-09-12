@@ -14,3 +14,22 @@ _test/float_zip_check/
 # 本地工作记忆与交付产物（不入库）
 .workbuddy/
 output/
+
+# ===== 隐私红线：内部文档与测试产物（含开发期测试命盘样例）一律不上线 =====
+# 内部任务书 / 口播 / 文案草稿（非产品文档）
+任务书_*.md
+悬浮卡任务书.md
+口播文案_*.md
+公众号文章_*.md
+玄机命理-宣传视频文案.md
+# 知识资源审计（含测试命盘样例）
+SKILL_RESOURCE_AUDIT.md
+# 测试交叉样本（合成生辰，虽非真实但也避免外泄）
+_test/ziwei_cross.json
+_test/ziwei_ext_cross.json
+_test/cross_ref.json
+_test/cross_failures.json
+_test/_sim_tmp.js
+_test/browser_check.js
+_test/diag_resource.js
+_test/ps1_check.txt

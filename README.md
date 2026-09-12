@@ -59,6 +59,14 @@ Settings → Pages → Deploy from a branch → 选分支与 `/ (root)` 即可�
 node _tools/build-kb.js   # 需要 ../_skills/ 三个仓库在位
 ```
 
+## 隐私策略（重要）
+
+- **云端零保存**：本项目是纯静态站点，**没有后端、没有任何统计/埋点/上报**。生辰数据不会离开你的浏览器。
+- **每次打开都是干净会话**：命盘档案只写入 `sessionStorage`，**关闭标签页/浏览器即全部销毁**；同一台电脑上，下一个人打开不会看到上一个人的任何命盘信息。
+- **自动清除旧残留**：页面加载时会自动清除早期版本遗留在 `localStorage` 中的档案（`xuanxue.archives.v1` / `xuanxue.current.v1`）。
+- **悬浮卡本地档案**（`float-cards.json` / `xuanji-data.json`）：保存在你自己的电脑上，仅悬浮卡读取，不上传任何网络。如需彻底清除，删除这两个文件即可。
+- **反缓存加载**：知识库文件使用 `cache: 'no-store'` 探测，不产生数据外传。
+
 ## 测试
 
 ```bash

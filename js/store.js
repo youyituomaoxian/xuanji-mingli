@@ -1,14 +1,46 @@
 /* =========================================================================
  * store.js — 命盘档案存储 + 出生地区数据
- *   · 档案（命盘）持久化到 localStorage
- *   · 当前选中命盘 + 各分区结果缓存（会话级同步）
- *   · 出生地区 → 经度表（真太阳时校正真源）
+ *   · 档案（命盘）仅存会话级（sessionStorage）——关闭页面即销毁，不留任何跨会话痕迹
+ *   · 每次打开自动清除浏览器残留的旧版 localStorage 档案，杜绝上一个人的命盘泄漏
+ *   · 云端零后端零上报：生辰数据只在当前浏览器会话内存在
+ *   · 出生地区 → 经度表（真太阳时校正真源，非隐私数据）
  * ====================================================================== */
 (function (global) {
   'use strict';
 
-  var LS_KEY = 'xuanxue.archives.v1';
-  var LS_CUR = 'xuanxue.current.v1';
+  /* 隐私优先（用户明确要求：每次打开都必须清除，不允许记录上一个人的命盘信息）：
+     档案只落 sessionStorage（关标签/关浏览器即清空），不再跨会话持久化。 */
+  var LS_KEY = 'xuanxue.archives.v1';  // 旧版 localStorage 键——启动时立即清除残留
+  var LS_CUR = 'xuanxue.current.v1';   // 旧版 localStorage 键——启动时立即清除残留
+  var SS_KEY = 'xuanxue.archives.s1';  // 会话级档案（sessionStorage，关页即销毁）
+  var SS_CUR = 'xuanxue.current.s1';   // 会话级当前档案
+
+  /* ---------- 存储介质选择（仅 sessionStorage；不可用则纯内存） ----------
+     隐私要求：每次打开必须干净，绝不跨会话保留。
+     · sessionStorage：随标签页/浏览器关闭即销毁 —— 首选；
+     · 不可用（隐私模式禁用）→ 退回纯内存（_store = null），刷新即清；
+     · 绝不回退 localStorage —— 那正是本模块要消灭的旧版泄漏面。 */
+  var _store = (function () {
+    try {
+      if (global.sessionStorage) {
+        global.sessionStorage.setItem('__t', '1');
+        global.sessionStorage.removeItem('__t');
+        return global.sessionStorage;
+      }
+    } catch (e) {}
+    return null;
+  })();
+
+  /* ---------- 启动时清除旧版 localStorage 残留（上一版本曾把档案持久化到 localStorage） ----------
+     只要检测到旧键，立即删除，确保「每次打开都是干净会话」，绝不把上一个人的命盘带给下一个人。 */
+  (function purgeLegacy() {
+    try {
+      if (global.localStorage) {
+        if (global.localStorage.getItem(LS_KEY)) global.localStorage.removeItem(LS_KEY);
+        if (global.localStorage.getItem(LS_CUR)) global.localStorage.removeItem(LS_CUR);
+      }
+    } catch (e) { /* 隐私模式忽略 */ }
+  })();
 
   /* ---------- 出生地区经度表（东经为正，单位：度） ----------
      覆盖主要城市 + 港澳台；其余按省份代表城市。
@@ -105,7 +137,7 @@
   function loadAll() {
     if (_cache) return _cache;
     var raw = null;
-    try { raw = global.localStorage.getItem(LS_KEY); } catch (e) { raw = null; }
+    try { raw = _store ? _store.getItem(SS_KEY) : null; } catch (e) { raw = null; }
     var arr = [];
     if (raw) { try { arr = JSON.parse(raw) || []; } catch (e) { arr = []; } }
     if (!Array.isArray(arr)) arr = [];
@@ -114,7 +146,7 @@
   }
 
   function persist() {
-    try { global.localStorage.setItem(LS_KEY, JSON.stringify(_cache || [])); } catch (e) { /* 隐私模式忽略 */ }
+    try { if (_store) _store.setItem(SS_KEY, JSON.stringify(_cache || [])); } catch (e) { /* 隐私模式忽略 */ }
   }
 
   function genId() {
@@ -161,10 +193,10 @@
     return null;
   }
 
-  /* ---------- 当前选中命盘 ---------- */
+  /* ---------- 当前选中命盘（会话级，关页即清） ---------- */
   function current() {
     var v = null;
-    try { v = global.localStorage.getItem(LS_CUR); } catch (e) { v = null; }
+    try { v = _store ? _store.getItem(SS_CUR) : null; } catch (e) { v = null; }
     if (v && byId(v)) return v;
     /* 兜底：取第一个 */
     var all = loadAll();
@@ -173,8 +205,10 @@
   }
   function setCurrent(id) {
     try {
-      if (id) global.localStorage.setItem(LS_CUR, id);
-      else global.localStorage.removeItem(LS_CUR);
+      if (_store) {
+        if (id) _store.setItem(SS_CUR, id);
+        else _store.removeItem(SS_CUR);
+      }
     } catch (e) { /* ignore */ }
     emit();
   }
